@@ -9,6 +9,7 @@ dependencies = [
     "fastapi>=0.136.0",
     "httpx>=0.28.1",
     "pandas>=3.0.2",
+    "psycopg2-binary>=2.9.12",
     "pydantic-settings>=2.14.0",
     "python-jose>=3.5.0",
     "sqlalchemy>=2.0.49",
