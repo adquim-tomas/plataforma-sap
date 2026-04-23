@@ -1,0 +1,1 @@
+# Schemas Pydantic (respuestas API)
