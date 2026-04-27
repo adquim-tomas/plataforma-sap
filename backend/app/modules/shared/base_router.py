@@ -1,4 +1,5 @@
 import logging
+import math
 from abc import ABC, abstractmethod
 import io
 from typing import Any, Generic, TypeVar
@@ -9,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.core.sap_client import SAPClient, SAPError, SAPValidationError
 from app.models.upload import BatchStatus, ErrorType, UploadBatch, UploadError
+from app.modules.shared.base_schema import ErrorSource, InvalidFileError
 
 logger = logging.getLogger(__name__)
 
@@ -20,8 +22,15 @@ SchemaT = TypeVar("SchemaT", bound=BaseModel)
 class RowError(BaseModel):
     row: int
     field: str | None
-    error_type: str
+    source: ErrorSource
     message: str
+
+
+# Origen de error → enum persistido en BD
+_SOURCE_TO_DB_ERROR_TYPE = {
+    ErrorSource.API: ErrorType.VALIDATION,
+    ErrorSource.SAP: ErrorType.SAP,
+}
 
 
 class UploadResult(BaseModel):
@@ -44,34 +53,18 @@ class BaseUploadHandler(ABC, Generic[SchemaT]):
       - schema_class   → clase Pydantic que representa una fila del Excel
       - sap_module     → nombre del módulo para auditoría
       - insert_row()   → lógica de inserción en SAP para una fila válida
-
-    El engine se encarga de:
-      - Parsear el Excel
-      - Validar cada fila con Pydantic
-      - Insertar las filas válidas en SAP
-      - Registrar errores de validación y de SAP
-      - Crear el registro de auditoría en BD
     """
 
     @property
     @abstractmethod
-    def schema_class(self) -> type[SchemaT]:
-        """Clase Pydantic que valida una fila del Excel."""
-        ...
+    def schema_class(self) -> type[SchemaT]: ...
 
     @property
     @abstractmethod
-    def sap_module(self) -> str:
-        """Nombre del módulo SAP para auditoría (e.g. 'BusinessPartners')."""
-        ...
+    def sap_module(self) -> str: ...
 
     @abstractmethod
-    async def insert_row(self, sap: SAPClient, row: SchemaT) -> None:
-        """
-        Inserta una fila válida en SAP.
-        Lanza SAPValidationError si SAP rechaza la fila.
-        """
-        ...
+    async def insert_row(self, sap: SAPClient, row: SchemaT) -> None: ...
 
     # ── Método principal ───────────────────────────────────────────────────────
 
@@ -84,42 +77,27 @@ class BaseUploadHandler(ABC, Generic[SchemaT]):
         sap: SAPClient,
         db: Session,
     ) -> UploadResult:
-        """
-        Flujo completo:
-          1. Parsear Excel
-          2. Validar cada fila (Pydantic)
-          3. Insertar filas válidas en SAP
-          4. Registrar en BD (batch + errores)
-        """
-        # 1. Parsear Excel
         try:
             df = self._parse_excel(file_bytes)
         except Exception as e:
-            raise ValueError(f"No se pudo leer el archivo Excel: {e}") from e
+            raise InvalidFileError(f"No se pudo leer el archivo Excel: {e}") from e
 
         total_rows = len(df)
         errors: list[RowError] = []
         success_count = 0
 
-        # 2 y 3. Procesar fila por fila
         for idx, raw_row in df.iterrows():
-            row_number = int(idx) + 2  # +2 porque Excel empieza en 1 y hay header
+            row_number = int(idx) + 2  # +2: Excel empieza en 1 y hay header
 
-            # Validación Pydantic
             validated = self._validate_row(raw_row.to_dict(), row_number, errors)
             if validated is None:
-                continue  # fila inválida — ya registrada en errors
+                continue
 
-            # Inserción en SAP
-            success = await self._insert_row_safe(
-                sap, validated, row_number, errors
-            )
+            success = await self._insert_row_safe(sap, validated, row_number, errors)
             if success:
                 success_count += 1
 
         error_count = total_rows - success_count
-
-        # 4. Registrar batch en BD
         status = self._resolve_status(success_count, error_count, total_rows)
         batch = self._save_batch(
             db=db,
@@ -151,16 +129,10 @@ class BaseUploadHandler(ABC, Generic[SchemaT]):
     # ── Helpers internos ───────────────────────────────────────────────────────
 
     def _parse_excel(self, file_bytes: bytes) -> pd.DataFrame:
-        """
-        Lee el Excel y normaliza los headers:
-        - Elimina espacios y caracteres invisibles
-        - Convierte NaN a None para que Pydantic los maneje como null
-        """
         df = pd.read_excel(io.BytesIO(file_bytes), dtype=str)
         df.columns = df.columns.str.strip()
-        df = df.where(pd.notna(df), None)  # NaN → None
-        df = df.replace("nan", None)  # ← agregar esta línea
-
+        df = df.where(pd.notna(df), None)
+        df = df.replace("nan", None)
         return df
 
     def _validate_row(
@@ -171,17 +143,24 @@ class BaseUploadHandler(ABC, Generic[SchemaT]):
     ) -> SchemaT | None:
         """
         Valida una fila con Pydantic.
-        Si falla, agrega todos los errores de esa fila a la lista y retorna None.
+
+        pd.read_excel con dtype=str deja celdas vacías como numpy.nan (float),
+        que Pydantic no puede matchear contra str | None.
+        El dict se limpia antes de validar.
         """
+        cleaned = {
+            k: None if (isinstance(v, float) and math.isnan(v)) else v
+            for k, v in raw.items()
+        }
         try:
-            return self.schema_class(**raw)
+            return self.schema_class(**cleaned)
         except ValidationError as e:
             for err in e.errors():
                 field = ".".join(str(loc) for loc in err["loc"]) if err["loc"] else None
                 errors.append(RowError(
                     row=row_number,
                     field=field,
-                    error_type=ErrorType.VALIDATION,
+                    source=ErrorSource.API,
                     message=err["msg"],
                 ))
             return None
@@ -193,11 +172,6 @@ class BaseUploadHandler(ABC, Generic[SchemaT]):
         row_number: int,
         errors: list[RowError],
     ) -> bool:
-        """
-        Intenta insertar una fila en SAP.
-        Captura errores de SAP sin detener el proceso.
-        Retorna True si fue exitosa.
-        """
         try:
             await self.insert_row(sap, row)
             return True
@@ -205,7 +179,7 @@ class BaseUploadHandler(ABC, Generic[SchemaT]):
             errors.append(RowError(
                 row=row_number,
                 field=None,
-                error_type=ErrorType.SAP,
+                source=ErrorSource.SAP,
                 message=str(e),
             ))
             return False
@@ -213,14 +187,12 @@ class BaseUploadHandler(ABC, Generic[SchemaT]):
             errors.append(RowError(
                 row=row_number,
                 field=None,
-                error_type=ErrorType.SAP,
+                source=ErrorSource.SAP,
                 message=f"Error SAP inesperado: {e}",
             ))
             return False
 
-    def _resolve_status(
-        self, success: int, errors: int, total: int
-    ) -> BatchStatus:
+    def _resolve_status(self, success: int, errors: int, total: int) -> BatchStatus:
         if errors == 0:
             return BatchStatus.COMPLETED
         if success == 0:
@@ -250,14 +222,14 @@ class BaseUploadHandler(ABC, Generic[SchemaT]):
             status=status,
         )
         db.add(batch)
-        db.flush()  # obtener el ID antes de agregar los errores
+        db.flush()
 
         for err in errors:
             db.add(UploadError(
                 batch_id=batch.id,
                 row_number=err.row,
                 field=err.field,
-                error_type=err.error_type,
+                error_type=_SOURCE_TO_DB_ERROR_TYPE[err.source],
                 error_message=err.message,
             ))
 
