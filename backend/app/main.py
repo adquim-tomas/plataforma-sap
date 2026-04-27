@@ -8,24 +8,22 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.router import router
 from app.core.config import settings
-from app.core.sap_client import SAPClient, SAPAuthError
+from app.core.sap_client import SAPAuthError
+from app.core.sap_instance import sap_service
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-
-# ── Service account SAP — singleton de la aplicación ──────────────────────────
-# Este cliente es el que usan todos los módulos para operar en SAP.
-# Las credenciales del usuario solo se usan en el endpoint /login.
-sap_service: SAPClient = SAPClient()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Correr migraciones pendientes automáticamente al iniciar
     alembic_cfg = Config("alembic.ini")
+    alembic_cfg.set_main_option("script_location", "app/db/migrations")
+    alembic_cfg.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
     command.upgrade(alembic_cfg, "head")
     logger.info("Database migrations applied")
+
 
     # Startup: conectar service account a SAP
     try:
