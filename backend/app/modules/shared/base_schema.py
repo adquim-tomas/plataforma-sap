@@ -72,3 +72,13 @@ class InvalidFileError(APIError):
 class ModuleNotFoundError(APIError):
     code = "module_not_found"
     status_code = 404
+
+
+class RowValidationError(APIError):
+    """
+    Validación de negocio rechazada por la API intermediaria sobre una fila.
+    Usar cuando el rechazo lo decide nuestro código (no SAP) — incluso si la
+    decisión se basa en datos previamente leídos de SAP.
+    """
+    code = "row_validation"
+    status_code = 422

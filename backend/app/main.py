@@ -107,7 +107,7 @@ async def _handle_sap_not_found(request: Request, exc: SAPNotFoundError) -> JSON
 async def _handle_sap_auth(request: Request, exc: SAPAuthError) -> JSONResponse:
     logger.error(f"SAP auth error: {exc}")
     return _error_response(
-        status_code=status.HTTP_502_BAD_GATEWAY,
+        status_code=exc.status_code or status.HTTP_502_BAD_GATEWAY,
         source=ErrorSource.SAP,
         code="sap_auth",
         message=str(exc) or "Sesión inválida con SAP.",

@@ -1,8 +1,8 @@
 import logging
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, status
 
-from app.core.sap_client import SAPAuthError, SAPClient, SAPConnectionError
+from app.core.sap_client import SAPAuthError, SAPClient
 from app.core.security import create_access_token
 from app.schemas.auth import LoginRequest, TokenResponse
 
@@ -18,20 +18,15 @@ async def login(body: LoginRequest) -> TokenResponse:
     Las credenciales del usuario nunca se almacenan ni se reenvían.
     """
     async with SAPClient() as sap:
-        # 1. Validar credenciales contra SAP B1
+        # 1. Validar credenciales contra SAP B1.
+        # Las excepciones SAP propagan al handler global para preservar
+        # source="sap" en la respuesta. Pisamos status_code a 401 para que
+        # el frontend distinga credenciales inválidas del 502 genérico.
         try:
             await sap.login(body.company_db, body.username, body.password)
-        except SAPAuthError:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Credenciales SAP inválidas.",
-            )
-        except SAPConnectionError as e:
-            logger.error(f"SAP connection failed during login: {e}")
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="No se pudo conectar a SAP. Intente más tarde.",
-            )
+        except SAPAuthError as e:
+            e.status_code = status.HTTP_401_UNAUTHORIZED
+            raise
 
         # 2. Obtener nombre del empleado desde SAP
         display_name = await _get_display_name(sap, body.username)

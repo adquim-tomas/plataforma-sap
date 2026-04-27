@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.core.sap_client import SAPClient, SAPError, SAPValidationError
 from app.models.upload import BatchStatus, ErrorType, UploadBatch, UploadError
-from app.modules.shared.base_schema import ErrorSource, InvalidFileError
+from app.modules.shared.base_schema import APIError, ErrorSource, InvalidFileError
 
 logger = logging.getLogger(__name__)
 
@@ -22,8 +22,10 @@ SchemaT = TypeVar("SchemaT", bound=BaseModel)
 class RowError(BaseModel):
     row: int
     field: str | None
-    source: ErrorSource
+    source: ErrorSource          # 'sap' = lo rechazó SAP; 'api' = lo rechazó nuestra API
+    code: str                    # código simbólico estable para el frontend
     message: str
+    sap_code: int | None = None  # código numérico de SAP cuando source='sap'
 
 
 # Origen de error → enum persistido en BD
@@ -161,6 +163,7 @@ class BaseUploadHandler(ABC, Generic[SchemaT]):
                     row=row_number,
                     field=field,
                     source=ErrorSource.API,
+                    code=err.get("type") or "validation",
                     message=err["msg"],
                 ))
             return None
@@ -175,11 +178,23 @@ class BaseUploadHandler(ABC, Generic[SchemaT]):
         try:
             await self.insert_row(sap, row)
             return True
+        except APIError as e:
+            # Rechazo decidido por nuestra API (validación de negocio, etc.)
+            errors.append(RowError(
+                row=row_number,
+                field=None,
+                source=ErrorSource.API,
+                code=e.code,
+                message=e.message,
+            ))
+            return False
         except SAPValidationError as e:
             errors.append(RowError(
                 row=row_number,
                 field=None,
                 source=ErrorSource.SAP,
+                code="sap_validation",
+                sap_code=e.sap_code,
                 message=str(e),
             ))
             return False
@@ -188,6 +203,7 @@ class BaseUploadHandler(ABC, Generic[SchemaT]):
                 row=row_number,
                 field=None,
                 source=ErrorSource.SAP,
+                code="sap_error",
                 message=f"Error SAP inesperado: {e}",
             ))
             return False
@@ -230,6 +246,8 @@ class BaseUploadHandler(ABC, Generic[SchemaT]):
                 row_number=err.row,
                 field=err.field,
                 error_type=_SOURCE_TO_DB_ERROR_TYPE[err.source],
+                error_code=err.code,
+                sap_code=err.sap_code,
                 error_message=err.message,
             ))
 

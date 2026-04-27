@@ -1,4 +1,5 @@
-from app.core.sap_client import SAPClient, SAPValidationError
+from app.core.sap_client import SAPClient
+from app.modules.shared.base_schema import RowValidationError
 from app.modules.socios_negocio.datos_maestros.schema import (
     ADDRESS_FIELDS,
     BP_FIELDS,
@@ -67,8 +68,9 @@ class DatosMaestrosSAPService:
             key = f"AddressType='{row.AddressType}'"
             if row.AddressName:
                 key += f", AddressName='{row.AddressName}'"
-            raise SAPValidationError(
-                f"No se encontró dirección con {key} en el BP '{row.CardCode}'."
+            raise RowValidationError(
+                f"No se encontró dirección con {key} en el BP '{row.CardCode}'.",
+                code="address_not_found",
             )
 
         # Mergear: sobreescribir solo los campos provistos

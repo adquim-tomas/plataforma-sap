@@ -19,7 +19,11 @@ class SAPError(Exception):
 
 class SAPAuthError(SAPError):
     """Credenciales inválidas o sesión no iniciada."""
-    pass
+    def __init__(self, message: str = "", status_code: int | None = None):
+        # status_code permite al caller sugerir el HTTP status final
+        # (ej: 401 desde /auth/login en vez del 502 default).
+        self.status_code = status_code
+        super().__init__(message)
 
 class SAPNotFoundError(SAPError):
     """El recurso solicitado no existe en SAP."""

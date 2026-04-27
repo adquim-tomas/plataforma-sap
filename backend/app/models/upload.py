@@ -63,6 +63,8 @@ class UploadError(Base):
     row_number:   Mapped[int]      = mapped_column(Integer, nullable=False)  # fila en el Excel (1-indexed)
     field:        Mapped[str | None]  = mapped_column(String(100), nullable=True)   # columna del Excel
     error_type:   Mapped[str]      = mapped_column(Enum(ErrorType), nullable=False)
+    error_code:   Mapped[str | None] = mapped_column(String(100), nullable=True)  # código simbólico (sap_validation, address_not_found, ...)
+    sap_code:     Mapped[int | None] = mapped_column(Integer, nullable=True)      # código numérico de SAP cuando aplique
     error_message: Mapped[str]     = mapped_column(Text, nullable=False)
 
     batch: Mapped["UploadBatch"] = relationship(back_populates="errors")
