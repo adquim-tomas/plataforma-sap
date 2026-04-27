@@ -48,39 +48,6 @@
 
 ---
 
-## Estructura de Directorios (prevista)
-
-```
-src/
-├── components/
-│   ├── ui/             # shadcn auto-generados (no editar manualmente)
-│   ├── shared/         # Componentes reutilizables del proyecto
-│   │   ├── UploadTable.tsx
-│   │   ├── ErrorReport.tsx
-│   │   └── BatchStatus.tsx
-│   └── layout/
-│       ├── AppShell.tsx
-│       └── Sidebar.tsx
-├── pages/
-│   ├── auth/
-│   ├── uploads/
-│   │   └── {modulo}/
-│   │       ├── index.tsx
-│   │       └── columns.tsx   # definición de columnas por módulo
-│   └── audit/
-├── lib/
-│   ├── api.ts          # cliente HTTP (fetch/axios) hacia backend
-│   ├── auth.ts         # manejo de JWT
-│   └── utils.ts
-├── hooks/
-│   └── useUpload.ts    # hook genérico de upload
-├── types/
-│   └── index.ts        # tipos compartidos
-└── routes.tsx          # definición centralizada de rutas
-```
-
----
-
 ## Patrones a Seguir
 
 ### Upload Flow (por módulo)

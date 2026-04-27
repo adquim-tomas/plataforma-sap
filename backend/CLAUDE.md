@@ -30,7 +30,7 @@ SAPClient
   └── delete(endpoint)
 ```
 
-### BaseUploadHandler (`app/core/base_upload_handler.py`)
+### BaseUploadHandler (`app/modules/shared/base_router.py`)
 
 Pipeline genérico reutilizado por **todos** los módulos:
 
@@ -42,8 +42,8 @@ parse Excel → validate Pydantic → insert SAP → save BD
 
 | Archivo | Contenido |
 |---------|-----------|
-| `schemas.py` | `RowBase`, `DocumentLineBase` |
-| `validators.py` | `SAPValidator.card_code_exists` |
+| `base_schema.py` | `RowBase`, `DocumentLineBase` |
+| `base_validator.py` | `SAPValidator.card_code_exists` |
 
 ### Estructura por Módulo
 
@@ -88,12 +88,12 @@ router.py       # FastAPI router → registrado en /api/v1/uploads/{module_path}
 ## Reglas de Negocio
 
 ### CardCode
-- **Clientes (`cCustomer`):** `CN` + RUT → `CN12345678`
-- **Proveedores (`cSupplier`):** `PN` + RUT → `PN12345678`
+- **Clientes (`cCustomer`):** `CN` + RUT → `CN12345678-9`
+- **Proveedores (`cSupplier`):** `PN` + RUT → `PN12345678-9`
 
 ### Datos Maestros Socios de Negocio
 - **Solo PATCH** — nunca creación (POST).
-- Campos de dirección (`AddressName`, `Calle`, `Ciudad`, `Condado`, `Region`):
+- Campos de dirección (`AddressName`, `Street`, `City`, `County`, `State`):
   - Todos opcionales individualmente.
   - Si se edita cualquier campo de dirección → **todos requeridos en conjunto**.
   - `AddressName` lo provee el usuario en el Excel.
