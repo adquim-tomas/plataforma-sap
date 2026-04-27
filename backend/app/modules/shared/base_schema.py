@@ -54,6 +54,7 @@ class APIError(Exception):
         code: str | None = None,
         status_code: int | None = None,
         details: dict | None = None,
+        field: str | None = None,
     ):
         self.message = message
         if code is not None:
@@ -61,6 +62,7 @@ class APIError(Exception):
         if status_code is not None:
             self.status_code = status_code
         self.details = details
+        self.field = field
         super().__init__(message)
 
 

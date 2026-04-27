@@ -71,6 +71,7 @@ class DatosMaestrosSAPService:
             raise RowValidationError(
                 f"No se encontró dirección con {key} en el BP '{row.CardCode}'.",
                 code="address_not_found",
+                field="AddressName",
             )
 
         # Mergear: sobreescribir solo los campos provistos

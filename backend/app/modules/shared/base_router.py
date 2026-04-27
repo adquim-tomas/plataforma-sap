@@ -182,7 +182,7 @@ class BaseUploadHandler(ABC, Generic[SchemaT]):
             # Rechazo decidido por nuestra API (validación de negocio, etc.)
             errors.append(RowError(
                 row=row_number,
-                field=None,
+                field=e.field,
                 source=ErrorSource.API,
                 code=e.code,
                 message=e.message,

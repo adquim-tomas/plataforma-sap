@@ -3,7 +3,9 @@
     "allow": [
       "Bash(python -c \"import ast,pathlib; [ast.parse\\(pathlib.Path\\(f\\).read_text\\(encoding='utf-8'\\)\\) for f in ['app/core/sap_client.py','app/api/v1/endpoints/auth.py','app/main.py','app/modules/shared/base_schema.py','app/modules/shared/base_router.py','app/modules/socios_negocio/datos_maestros/sap_service.py','app/modules/socios_negocio/datos_maestros/router.py','app/models/upload.py','app/db/migrations/versions/a1b2c3d4e5f6_upload_error_code_columns.py']]; print\\('all ok'\\)\")",
       "Bash(python -c \"print\\('hello'\\)\")",
-      "PowerShell(python -c \"import ast,pathlib; files=['app/core/sap_client.py','app/api/v1/endpoints/auth.py','app/main.py','app/modules/shared/base_schema.py','app/modules/shared/base_router.py','app/modules/socios_negocio/datos_maestros/sap_service.py','app/modules/socios_negocio/datos_maestros/router.py','app/models/upload.py','app/db/migrations/versions/a1b2c3d4e5f6_upload_error_code_columns.py']; [ast.parse\\(pathlib.Path\\('backend/'+f\\).read_text\\(encoding='utf-8'\\)\\) for f in files]; print\\('all ok'\\)\")"
+      "PowerShell(python -c \"import ast,pathlib; files=['app/core/sap_client.py','app/api/v1/endpoints/auth.py','app/main.py','app/modules/shared/base_schema.py','app/modules/shared/base_router.py','app/modules/socios_negocio/datos_maestros/sap_service.py','app/modules/socios_negocio/datos_maestros/router.py','app/models/upload.py','app/db/migrations/versions/a1b2c3d4e5f6_upload_error_code_columns.py']; [ast.parse\\(pathlib.Path\\('backend/'+f\\).read_text\\(encoding='utf-8'\\)\\) for f in files]; print\\('all ok'\\)\")",
+      "Bash(cd c:\\\\\\\\Users\\\\\\\\Adquim\\\\\\\\Tomas\\\\\\\\PedroPedia)",
+      "Bash(ls -la \"c:\\\\\\\\Users\\\\\\\\Adquim\\\\\\\\Tomas\\\\\\\\PedroPedia\\\\\\\\\")"
     ]
   }
 }

@@ -25,6 +25,7 @@ class DatosMaestrosHandler(BaseUploadHandler[DatosMaestrosRow]):
             raise RowValidationError(
                 " | ".join(business_errors),
                 code="business_validation",
+                field="CardCode",
             )
 
         # 2. Insertar o actualizar en SAP

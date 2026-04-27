@@ -164,6 +164,31 @@ class DatosMaestrosRow(RowBase):
         return self
 
     @model_validator(mode="after")
+    def validar_formato_direccion(self) -> "DatosMaestrosRow":
+        """
+        Reglas de SAP B1 para Chile:
+        - City y County deben venir en mayúsculas.
+        - State es numérico.
+        - Country es 'CL'.
+        """
+        extra = self.model_extra or {}
+
+        for campo in ("City", "County"):
+            v = extra.get(campo)
+            if v is not None and v != v.upper():
+                raise ValueError(f"{campo} debe estar en mayúsculas (recibido: '{v}').")
+
+        # state = extra.get("State")
+        # if state is not None and not str(state).isdigit():
+        #     raise ValueError(f"State debe ser numérico (recibido: '{state}').")
+
+        # country = extra.get("Country")
+        # if country is not None and country != "CL":
+        #     raise ValueError(f"Country debe ser 'CL' (recibido: '{country}').")
+
+        return self
+
+    @model_validator(mode="after")
     def validar_address_group(self) -> "DatosMaestrosRow":
         """Si cualquier campo de dirección está presente, AddressType es obligatorio."""
         extra = self.model_extra or {}
