@@ -122,6 +122,23 @@ UDO con header (`Code` = PK) y colección `NX_LOGDETALLECollection`. Registro hi
 - Campos del Excel (allowlist en `schema.LINE_FIELDS`): `U_NX_Fecha` (YYYY-MM-DD, obligatorio), `U_NX_Neto` (obligatorio), `U_NX_IE`, `U_NX_FEPPIEV`, `U_LMM_Esp`, `U_LMM_Esp_Flota`, `U_LMM_JLC_Real`, `U_LMM_Copec`.
 - Validador SAP: `nx_logprecios_exists(code)`.
 
+### Orden de Compra (PurchaseOrders)
+
+Documento estándar de SAP B1. Esta iteración cubre **solo OC tipo Servicio** (`DocType="dDocument_Service"`) — sin items de inventario; la línea apunta a una cuenta contable.
+
+- **POST** a `/PurchaseOrders` (no PATCH — es un documento nuevo).
+- **1 fila Excel = 1 OC con 1 línea**. Multi-línea queda como follow-up.
+- Cabecera obligatoria: `CardCode` (proveedor), `SalesPersonCode` (encargado), `Comments`.
+- Línea obligatoria: `AccountCode` (cuenta contable), `LineTotal` (> 0).
+- `Comments` se usa también como `ItemDescription` de la línea (mismo patrón que el legacy del colega).
+- Campos opcionales: `CostingCode`, `CostingCode2` (dimensiones contables — SAP los rechaza si son inválidos), `BPL_IDAssignedToInvoice` (sucursal — solo en SAP DBs multi-branch).
+- Schema usa `extra="forbid"` (no allowlist abierto): columnas desconocidas se rechazan directo por Pydantic.
+- Validaciones SAP: `card_code_exists` + `sales_person_exists` + `account_code_exists` (todos ya existían en `SAPValidator`).
+
+### Documentos SAP estándar — POST vs PATCH
+
+Los módulos UDO (Datos Maestros, Gestión de Clientes, Log de Precios) usan **PATCH** sobre registros existentes. Los documentos estándar de SAP (PurchaseOrders, Invoices, etc.) usan **POST** para crear documentos nuevos. El `BaseUploadHandler` no diferencia: el handler decide en `insert_row()` si llamar `sap.post(...)` o `sap.patch(...)`. Errores SAP (`SAPValidationError`, `SAPError`) se reportan por fila en `RowError` con `source=sap` independientemente del método.
+
 ---
 
 ## Estado de Implementación
@@ -138,7 +155,7 @@ UDO con header (`Code` = PK) y colección `NX_LOGDETALLECollection`. Registro hi
 | **Log de Precios** | ✅ | PATCH NX_LOGPRECIOS — append-only de líneas; IVA y LineTotal calculados server-side |
 | **Gestión de Clientes** | ✅ | PATCH NX_GCLIENTE — actualiza líneas existentes por LineId |
 | **Cotización de Compras** | ⬜ | |
-| **Orden de Compra** | ⬜ | |
+| **Orden de Compra** | ✅ | POST PurchaseOrders tipo Servicio — 1 fila Excel = 1 OC con 1 línea contable |
 | **Factura de Proveedores** | ⬜ | |
 | **Nota de Venta** | ⬜ | |
 | **Entrega** | ⬜ | |
