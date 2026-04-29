@@ -72,3 +72,33 @@ class SAPValidator:
             return len(results) > 0
         except Exception:
             return False
+
+    @staticmethod
+    async def nx_gcliente_exists(sap: SAPClient, code: str) -> bool:
+        """Verifica que un header NX_GCLIENTE (gestión de clientes) exista en SAP."""
+        try:
+            await sap.get(
+                f"NX_GCLIENTE('{code}')",
+                params={"$select": "Code"},
+            )
+            return True
+        except SAPNotFoundError:
+            return False
+
+    @staticmethod
+    async def nx_gcliente_line_exists(sap: SAPClient, code: str, line_id: int) -> bool:
+        """
+        Verifica que una línea (LineId) exista dentro de NX_DETCLIENTECollection
+        del header NX_GCLIENTE('{code}').
+        """
+        try:
+            data = await sap.get(
+                f"NX_GCLIENTE('{code}')",
+                params={"$select": "NX_DETCLIENTECollection"},
+            )
+        except SAPNotFoundError:
+            return False
+        return any(
+            line.get("LineId") == line_id
+            for line in data.get("NX_DETCLIENTECollection", [])
+        )

@@ -38,12 +38,13 @@ Pipeline genérico reutilizado por **todos** los módulos:
 parse Excel → validate Pydantic → insert SAP → save BD
 ```
 
-### Shared (`app/shared/`)
+### Shared (`app/modules/shared/`)
 
 | Archivo | Contenido |
 |---------|-----------|
-| `base_schema.py` | `RowBase`, `DocumentLineBase` |
-| `base_validator.py` | `SAPValidator.card_code_exists` |
+| `base_schema.py` | `RowBase`, `DocumentLineBase`, `APIError`, `RowValidationError`, `ErrorSource` |
+| `base_router.py` | `BaseUploadHandler`, `UploadResult`, `RowError` |
+| `base_validator.py` | `SAPValidator.card_code_exists` / `item_code_exists` / `account_code_exists` / `warehouse_exists` / `sales_person_exists` / `nx_gcliente_exists` / `nx_gcliente_line_exists` |
 
 ### Estructura por Módulo
 
@@ -98,6 +99,18 @@ router.py       # FastAPI router → registrado en /api/v1/uploads/{module_path}
   - Si se edita cualquier campo de dirección → **todos requeridos en conjunto**.
   - `AddressName` lo provee el usuario en el Excel.
 
+### Gestión de Clientes (NX_GCLIENTE)
+
+UDO con header (PK `Code` = CardCode del cliente) y colección de líneas
+`NX_DETCLIENTECollection` (PK `LineId` dentro del header).
+
+- **Solo PATCH** — actualiza líneas existentes; no crea nuevas líneas ni nuevos headers.
+- PATCH al header con `{"NX_DETCLIENTECollection": [{"Code": ..., "LineId": ..., <campos>}]}` upserta por `LineId` **sin pisar otras líneas** del collection.
+- Campos opcionales de la línea (allowlist en `schema.LINE_FIELDS`): `U_NX_Margen`, `U_LMM_Precio_Estimado`, `U_LMM_Precio_Estimado_Neto`, `U_LMM_FI_SPOT`, `U_LMM_NC`, `U_NX_Capacidad`, `U_NX_CodArt`, `U_LMM_DescArt`, `U_LMM_ESP`, `U_LMM_Sucural`, `U_LMM_Formato`.
+- `U_LMM_Sucural` (sin la 's' final) es **typo intencional en SAP** — no corregir.
+- `U_NX_Margen` debe ser decimal entre 0 y 1 (no porcentaje 0–100).
+- Validador SAP: `nx_gcliente_exists(code)` + `nx_gcliente_line_exists(code, line_id)`.
+
 ---
 
 ## Estado de Implementación
@@ -112,7 +125,7 @@ router.py       # FastAPI router → registrado en /api/v1/uploads/{module_path}
 | SAPValidator.card_code_exists | ✅ | shared validator |
 | **Datos Maestros SN** | ✅ | PATCH only |
 | **Log de Precios** | ⬜ | |
-| **Gestión de Clientes** | ⬜ | |
+| **Gestión de Clientes** | ✅ | PATCH NX_GCLIENTE — actualiza líneas existentes por LineId |
 | **Cotización de Compras** | ⬜ | |
 | **Orden de Compra** | ⬜ | |
 | **Factura de Proveedores** | ⬜ | |

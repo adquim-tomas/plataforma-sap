@@ -12,6 +12,7 @@ from app.schemas.auth import TokenPayload
 
 # Importar handlers de cada módulo — se agregan a medida que se implementan
 from app.modules.socios_negocio.datos_maestros.router import DatosMaestrosHandler
+from app.modules.socios_negocio.gestion_clientes.router import GestionClientesHandler
 
 router = APIRouter(prefix="/uploads", tags=["uploads"])
 logger = logging.getLogger(__name__)
@@ -21,6 +22,7 @@ logger = logging.getLogger(__name__)
 # value: instancia del handler
 HANDLERS = {
     "socios_negocio/datos_maestros": DatosMaestrosHandler(),
+    "socios_negocio/gestion_clientes": GestionClientesHandler(),
     # "socios_negocio/log_precios": LogPreciosHandler(),
     # "compras/orden_compra": OrdenCompraHandler(),
     # ... se agregan a medida que se implementan

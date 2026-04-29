@@ -5,7 +5,20 @@
       "Bash(python -c \"print\\('hello'\\)\")",
       "PowerShell(python -c \"import ast,pathlib; files=['app/core/sap_client.py','app/api/v1/endpoints/auth.py','app/main.py','app/modules/shared/base_schema.py','app/modules/shared/base_router.py','app/modules/socios_negocio/datos_maestros/sap_service.py','app/modules/socios_negocio/datos_maestros/router.py','app/models/upload.py','app/db/migrations/versions/a1b2c3d4e5f6_upload_error_code_columns.py']; [ast.parse\\(pathlib.Path\\('backend/'+f\\).read_text\\(encoding='utf-8'\\)\\) for f in files]; print\\('all ok'\\)\")",
       "Bash(cd c:\\\\\\\\Users\\\\\\\\Adquim\\\\\\\\Tomas\\\\\\\\PedroPedia)",
-      "Bash(ls -la \"c:\\\\\\\\Users\\\\\\\\Adquim\\\\\\\\Tomas\\\\\\\\PedroPedia\\\\\\\\\")"
+      "Bash(ls -la \"c:\\\\\\\\Users\\\\\\\\Adquim\\\\\\\\Tomas\\\\\\\\PedroPedia\\\\\\\\\")",
+      "Read(//c/Users/Adquim/Tomas/**)",
+      "Bash(dir \"C:\\\\Users\\\\Adquim\\\\Tomas\")",
+      "Bash(cmd //c \"dir /AD /B C:\\\\Users\\\\Adquim\\\\Tomas\")",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\Adquim\\\\Tomas\\\\Conexion_Service_Layer_SAP\" -Force | ForEach-Object { \"$\\($_.Mode\\) $\\($_.Name\\)\" })",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\Adquim\\\\Tomas\\\\PedroPedia\" -Force | ForEach-Object { \"$\\($_.Mode\\) $\\($_.Name\\)\" })",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\Adquim\\\\Tomas\\\\PedroPedia\\\\Conexion_Service_Layer_SAP\" -Force -ErrorAction SilentlyContinue | ForEach-Object { \"$\\($_.Mode\\) $\\($_.Name\\)\" })",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\Adquim\\\\Tomas\\\\PedroPedia\\\\Conexion_Service_Layer_SAP\\\\clases\" -Recurse -File | Where-Object {$_.Extension -eq '.py'} | Select-Object Name | Sort-Object)",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\Adquim\\\\Tomas\\\\PedroPedia\\\\backend\\\\app\\\\db\\\\migrations\\\\versions\" -File | Select-Object Name, @{Name='Size';Expression={$_.Length}} | Sort-Object Name)",
+      "Bash(xargs grep *)",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\Adquim\\\\Tomas\\\\PedroPedia\\\\backend\\\\app\\\\modules\\\\socios_negocio\\\\gestion_clientes\" -Force | ForEach-Object { \"$\\($_.Length\\) $\\($_.Name\\)\" })",
+      "PowerShell(Get-Command uv -ErrorAction SilentlyContinue)",
+      "PowerShell(& \"C:\\\\Users\\\\Adquim\\\\Tomas\\\\PedroPedia\\\\backend\\\\.venv\\\\Scripts\\\\python.exe\" -c \"import sys; sys.path.insert\\(0, r'C:\\\\Users\\\\Adquim\\\\Tomas\\\\PedroPedia\\\\backend'\\); from app.api.v1.endpoints.uploads import HANDLERS; print\\('OK'\\); [print\\(' -', k\\) for k in HANDLERS.keys\\(\\)]\" 2>&1)",
+      "PowerShell($env:SAP_BASE_URL='x'; $env:SAP_COMPANY_DB='x'; $env:SAP_SERVICE_USER='x'; $env:SAP_SERVICE_PASSWORD='x'; $env:DATABASE_URL='postgresql://x:x@x/x'; $env:JWT_SECRET_KEY='x'; $env:JWT_ALGORITHM='HS256'; $env:JWT_EXPIRE_MINUTES='60'; & \"C:\\\\Users\\\\Adquim\\\\Tomas\\\\PedroPedia\\\\backend\\\\.venv\\\\Scripts\\\\python.exe\" -c \"import sys; sys.path.insert\\(0, r'C:\\\\Users\\\\Adquim\\\\Tomas\\\\PedroPedia\\\\backend'\\); from app.api.v1.endpoints.uploads import HANDLERS; print\\('IMPORT OK'\\); [print\\(' -', k\\) for k in HANDLERS.keys\\(\\)]\" 2>&1)"
     ]
   }
 }

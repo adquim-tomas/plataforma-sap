@@ -37,7 +37,7 @@ El usuario sube un Excel; las filas válidas se insertan en SAP y las inválidas
 | # | Módulo | Estado |
 |---|--------|--------|
 | 1 | Datos Maestros SN | ✅ |
-| 2 | Gestión de Clientes | ⬜ |
+| 2 | Gestión de Clientes | ✅ |
 | 3 | Log de Precios | ⬜ |
 
 ### Compras — Proveedores
