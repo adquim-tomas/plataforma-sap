@@ -44,7 +44,7 @@ parse Excel → validate Pydantic → insert SAP → save BD
 |---------|-----------|
 | `base_schema.py` | `RowBase`, `DocumentLineBase`, `APIError`, `RowValidationError`, `ErrorSource` |
 | `base_router.py` | `BaseUploadHandler`, `UploadResult`, `RowError` |
-| `base_validator.py` | `SAPValidator.card_code_exists` / `item_code_exists` / `account_code_exists` / `warehouse_exists` / `sales_person_exists` / `nx_gcliente_exists` / `nx_gcliente_line_exists` |
+| `base_validator.py` | `SAPValidator.card_code_exists` / `item_code_exists` / `account_code_exists` / `warehouse_exists` / `sales_person_exists` / `nx_gcliente_exists` / `nx_gcliente_line_exists` / `nx_logprecios_exists` |
 
 ### Estructura por Módulo
 
@@ -111,6 +111,17 @@ UDO con header (PK `Code` = CardCode del cliente) y colección de líneas
 - `U_NX_Margen` debe ser decimal entre 0 y 1 (no porcentaje 0–100).
 - Validador SAP: `nx_gcliente_exists(code)` + `nx_gcliente_line_exists(code, line_id)`.
 
+### Log de Precios (NX_LOGPRECIOS)
+
+UDO con header (`Code` = PK) y colección `NX_LOGDETALLECollection`. Registro histórico de precios por artículo/sucursal — **append-only**.
+
+- **Solo PATCH con líneas sin `LineId`** → SAP B1 lo trata como nueva línea (append). No se editan líneas existentes ni se crean headers (POST queda fuera de scope).
+- **Campos calculados server-side** (rechazar si vienen en el Excel):
+  - `U_NX_IVA = Neto * 0.19`
+  - `U_NX_LineTotal = Neto + IVA + IE + FEPPIEV`
+- Campos del Excel (allowlist en `schema.LINE_FIELDS`): `U_NX_Fecha` (YYYY-MM-DD, obligatorio), `U_NX_Neto` (obligatorio), `U_NX_IE`, `U_NX_FEPPIEV`, `U_LMM_Esp`, `U_LMM_Esp_Flota`, `U_LMM_JLC_Real`, `U_LMM_Copec`.
+- Validador SAP: `nx_logprecios_exists(code)`.
+
 ---
 
 ## Estado de Implementación
@@ -124,7 +135,7 @@ UDO con header (PK `Code` = CardCode del cliente) y colección de líneas
 | RowBase + DocumentLineBase | ✅ | shared schemas |
 | SAPValidator.card_code_exists | ✅ | shared validator |
 | **Datos Maestros SN** | ✅ | PATCH only |
-| **Log de Precios** | ⬜ | |
+| **Log de Precios** | ✅ | PATCH NX_LOGPRECIOS — append-only de líneas; IVA y LineTotal calculados server-side |
 | **Gestión de Clientes** | ✅ | PATCH NX_GCLIENTE — actualiza líneas existentes por LineId |
 | **Cotización de Compras** | ⬜ | |
 | **Orden de Compra** | ⬜ | |

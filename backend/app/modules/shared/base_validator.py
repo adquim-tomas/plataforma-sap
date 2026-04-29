@@ -86,6 +86,18 @@ class SAPValidator:
             return False
 
     @staticmethod
+    async def nx_logprecios_exists(sap: SAPClient, code: str) -> bool:
+        """Verifica que un header NX_LOGPRECIOS (log de precios) exista en SAP."""
+        try:
+            await sap.get(
+                f"NX_LOGPRECIOS('{code}')",
+                params={"$select": "Code"},
+            )
+            return True
+        except SAPNotFoundError:
+            return False
+
+    @staticmethod
     async def nx_gcliente_line_exists(sap: SAPClient, code: str, line_id: int) -> bool:
         """
         Verifica que una línea (LineId) exista dentro de NX_DETCLIENTECollection

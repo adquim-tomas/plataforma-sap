@@ -38,14 +38,14 @@ El usuario sube un Excel; las filas válidas se insertan en SAP y las inválidas
 |---|--------|--------|
 | 1 | Datos Maestros SN | ✅ |
 | 2 | Gestión de Clientes | ✅ |
-| 3 | Log de Precios | ⬜ |
+| 3 | Log de Precios | ✅ |
 
 ### Compras — Proveedores
 | # | Módulo | Estado |
 |---|--------|--------|
 | 4 | Cotización de Compras | ⬜ |
 | 5 | Orden de Compra | ⬜ |
-| 6 | Factura de Proveedores | ⬜ |
+| 6 | Factura de Proveedores | ⬜ | IMPORTANTE - Pedir repo a Pedro y dejar para el final
 
 ### Ventas — Clientes
 | # | Módulo | Estado |
