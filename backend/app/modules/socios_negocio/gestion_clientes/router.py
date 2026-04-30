@@ -16,7 +16,7 @@ class GestionClientesHandler(BaseUploadHandler[GestionClientesRow]):
     def sap_module(self) -> str:
         return "socios_negocio/gestion_clientes"
 
-    async def insert_row(self, sap: SAPClient, row: GestionClientesRow) -> None:
+    async def sync_row(self, sap: SAPClient, row: GestionClientesRow) -> None:
         # 1. Validaciones de negocio que requieren SAP.
         # Aunque la decisión consulte SAP, el rechazo lo emite nuestra API
         # (source=API, no source=SAP).

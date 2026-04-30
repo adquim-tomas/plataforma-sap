@@ -54,7 +54,7 @@ class BaseUploadHandler(ABC, Generic[SchemaT]):
     Cada módulo solo necesita implementar:
       - schema_class   → clase Pydantic que representa una fila del Excel
       - sap_module     → nombre del módulo para auditoría
-      - insert_row()   → lógica de inserción en SAP para una fila válida
+      - sync_row()     → sincroniza una fila válida con SAP (PATCH/POST según el módulo)
     """
 
     @property
@@ -66,7 +66,7 @@ class BaseUploadHandler(ABC, Generic[SchemaT]):
     def sap_module(self) -> str: ...
 
     @abstractmethod
-    async def insert_row(self, sap: SAPClient, row: SchemaT) -> None: ...
+    async def sync_row(self, sap: SAPClient, row: SchemaT) -> None: ...
 
     # ── Método principal ───────────────────────────────────────────────────────
 
@@ -95,7 +95,7 @@ class BaseUploadHandler(ABC, Generic[SchemaT]):
             if validated is None:
                 continue
 
-            success = await self._insert_row_safe(sap, validated, row_number, errors)
+            success = await self._sync_row_safe(sap, validated, row_number, errors)
             if success:
                 success_count += 1
 
@@ -168,7 +168,7 @@ class BaseUploadHandler(ABC, Generic[SchemaT]):
                 ))
             return None
 
-    async def _insert_row_safe(
+    async def _sync_row_safe(
         self,
         sap: SAPClient,
         row: SchemaT,
@@ -176,7 +176,7 @@ class BaseUploadHandler(ABC, Generic[SchemaT]):
         errors: list[RowError],
     ) -> bool:
         try:
-            await self.insert_row(sap, row)
+            await self.sync_row(sap, row)
             return True
         except APIError as e:
             # Rechazo decidido por nuestra API (validación de negocio, etc.)

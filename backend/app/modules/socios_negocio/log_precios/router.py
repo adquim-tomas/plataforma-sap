@@ -16,7 +16,7 @@ class LogPreciosHandler(BaseUploadHandler[LogPreciosRow]):
     def sap_module(self) -> str:
         return "socios_negocio/log_precios"
 
-    async def insert_row(self, sap: SAPClient, row: LogPreciosRow) -> None:
+    async def sync_row(self, sap: SAPClient, row: LogPreciosRow) -> None:
         # 1. Validaciones de negocio que requieren SAP.
         business_errors = await LogPreciosValidator.validate(sap, row)
         if business_errors:

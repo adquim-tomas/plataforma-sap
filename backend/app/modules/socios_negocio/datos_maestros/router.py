@@ -16,7 +16,7 @@ class DatosMaestrosHandler(BaseUploadHandler[DatosMaestrosRow]):
     def sap_module(self) -> str:
         return "socios_negocio/datos_maestros"
 
-    async def insert_row(self, sap: SAPClient, row: DatosMaestrosRow) -> None:
+    async def sync_row(self, sap: SAPClient, row: DatosMaestrosRow) -> None:
         # 1. Validaciones de negocio que requieren SAP
         # El rechazo lo decide nuestra API (aunque consulte SAP para decidir),
         # por eso source=API, no source=SAP.

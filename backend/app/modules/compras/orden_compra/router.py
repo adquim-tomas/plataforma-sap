@@ -16,7 +16,7 @@ class OrdenCompraHandler(BaseUploadHandler[OrdenCompraServicioRow]):
     def sap_module(self) -> str:
         return "compras/orden_compra"
 
-    async def insert_row(self, sap: SAPClient, row: OrdenCompraServicioRow) -> None:
+    async def sync_row(self, sap: SAPClient, row: OrdenCompraServicioRow) -> None:
         # 1. Validaciones de negocio que requieren SAP.
         business_errors = await OrdenCompraValidator.validate(sap, row)
         if business_errors:
