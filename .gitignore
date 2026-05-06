@@ -11,5 +11,6 @@
 **/.env
 **/.DS_Store
 **/*.log
+**/*.local.*
 
 Conexion_Service_Layer_SAP
