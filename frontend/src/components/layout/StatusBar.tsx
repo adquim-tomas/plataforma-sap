@@ -65,7 +65,7 @@ export function StatusBar() {
               className="h-auto p-0 text-[0.74rem] font-normal text-muted-foreground hover:text-primary"
               onClick={logout}
             >
-              [ESC] logout
+              cerrar sesión
             </Button>
           </>
         )}

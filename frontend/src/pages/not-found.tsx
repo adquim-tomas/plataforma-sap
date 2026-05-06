@@ -1,6 +1,5 @@
 import { Link, useLocation } from "react-router-dom"
 
-import { KbdAction } from "@/components/atoms/KbdHint"
 import { Label } from "@/components/atoms/Label"
 
 export function NotFoundPage() {
@@ -40,9 +39,8 @@ export function NotFoundPage() {
               to="/"
               className="text-[0.74rem] text-primary hover:underline"
             >
-              [/] return to index
+              return to index
             </Link>
-            <KbdAction k="ESC" label="back" />
           </div>
         </div>
       </main>

@@ -1,6 +1,5 @@
 import { useNavigate, useParams } from "react-router-dom"
 
-import { KbdAction } from "@/components/atoms/KbdHint"
 import { Label } from "@/components/atoms/Label"
 import { StatusPill } from "@/components/atoms/StatusPill"
 import { Button } from "@/components/ui/button"
@@ -67,7 +66,7 @@ export function ModulePlaceholderPage() {
           onClick={() => navigate("/")}
           className="h-auto p-0 text-[0.74rem] text-muted-foreground hover:text-primary"
         >
-          [ESC] back to index
+          [ESC] atrás
         </Button>
       </div>
 
@@ -122,13 +121,6 @@ export function ModulePlaceholderPage() {
             </p>
           </>
         )}
-      </div>
-
-      {/* Inline kbd hints */}
-      <div className="flex flex-wrap items-center gap-5 border-t border-border pt-3">
-        <KbdAction k="/" label="index" />
-        <KbdAction k="ESC" label="back" />
-        <KbdAction k="?" label="help" />
       </div>
     </div>
   )

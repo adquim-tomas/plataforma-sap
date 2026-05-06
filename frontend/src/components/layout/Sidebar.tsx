@@ -13,17 +13,14 @@ export function Sidebar() {
   return (
     <aside
       className="
-        hidden w-60 shrink-0 flex-col overflow-y-auto
-        border-r border-border bg-elev
+        hidden w-full shrink-0 flex-col overflow-y-auto
+        bg-elev
         md:flex
       "
     >
       {/* Header */}
       <div className="flex h-7 shrink-0 items-center justify-between border-b border-border px-3">
-        <Label>index</Label>
-        <span className="text-[0.65rem] text-muted-foreground">
-          {MODULES.filter((m) => m.implemented).length}/{MODULES.length}
-        </span>
+        <Label>Menú</Label>
       </div>
 
       {/* Lista de módulos */}
@@ -33,7 +30,14 @@ export function Sidebar() {
           const prev = MODULES[idx - 1]
           const isFirstOfCategory = idx === 0 || prev.category !== m.category
           return (
-            <SidebarItem key={m.code} module={m} stronger={isFirstOfCategory && idx > 0} />
+            <>
+              {isFirstOfCategory && (
+                <li className="px-3 pt-4">
+                  <Label>{m.category.replace("_", " ")}</Label>
+                </li>
+              )}
+              <SidebarItem key={m.code} module={m} stronger={isFirstOfCategory} />
+            </>
           )
         })}
       </ul>

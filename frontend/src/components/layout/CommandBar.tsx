@@ -7,9 +7,9 @@ export interface CommandHint {
 }
 
 const DEFAULT_HINTS: CommandHint[] = [
-  { k: "/", label: "index" },
-  { k: "ESC", label: "back" },
-  { k: "?", label: "help" },
+  { k: "/", label: "inicio" },
+  { k: "ESC", label: "atrás" },
+  { k: "?", label: "ayuda" },
 ]
 
 interface CommandBarProps {
