@@ -32,7 +32,7 @@ export function StatusPill({
   return (
     <span
       className={cn(
-        "inline-flex h-[18px] items-center justify-center px-1.5",
+        "inline-flex h-4.5 items-center justify-center px-1.5",
         "border bg-transparent",
         "text-[0.62rem] font-medium tracking-[0.16em] uppercase leading-none",
         v.border,

@@ -9,13 +9,13 @@ export function NotFoundPage() {
   return (
     <div className="grid h-screen bg-background text-foreground">
       {/* Mini status bar */}
-      <div className="flex h-[28px] items-center justify-between border-b border-border-strong px-4 text-[0.74rem]">
+      <div className="flex h-7 items-center justify-between border-b border-border-strong px-4 text-[0.74rem]">
         <span className="font-bold tracking-[0.14em]">PEDROPEDIA</span>
         <span className="text-muted-foreground">v1.0</span>
       </div>
 
       <main className="flex items-start justify-center px-6 py-16">
-        <div className="w-full max-w-[640px] border border-border bg-elev">
+        <div className="w-full max-w-160 border border-border bg-elev">
           <div className="flex items-center justify-between border-b border-border-strong px-4 py-2.5">
             <Label className="text-fail">error · 404</Label>
             <Label>route not registered</Label>
