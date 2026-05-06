@@ -9,6 +9,20 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
+  server: {
+    host: true,
+    port: 5173,
+    strictPort: true,
+    watch: {
+      usePolling: true,
+      interval: 200,
+    },
+    hmr: {
+      host: 'localhost',
+      port: 5173,
+      protocol: 'ws',
+    },
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, 'src'),

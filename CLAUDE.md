@@ -16,7 +16,7 @@ El usuario sube un Excel; las filas válidas se insertan en SAP y las inválidas
 
 | Capa | Tecnologías |
 |------|-------------|
-| Frontend | React 19, Vite 8, TypeScript 6, Tailwind 4, shadcn/base-nova, @base-ui/react, react-router-dom v7 — **bun** |
+| Frontend | React 19, Vite 8, TypeScript 6, Tailwind 4, shadcn/base-nova + design system *Bitácora* (light canónico, JetBrains Mono Variable como única voz, terminal-data layout), react-router-dom v7, axios — **bun** |
 | Backend | FastAPI, SQLAlchemy, Alembic, PostgreSQL, httpx async — **uv** |
 
 > Detalles completos → [`backend/CLAUDE.md`](backend/CLAUDE.md) y [`frontend/CLAUDE.md`](frontend/CLAUDE.md)
