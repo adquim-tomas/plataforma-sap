@@ -11,17 +11,8 @@ from app.modules.shared.base_schema import InvalidFileError, ModuleNotFoundError
 from app.schemas.auth import TokenPayload
 
 # Importar handlers — uno por acción concreta de cada módulo.
-from app.modules.compras.orden_compra.crear_servicio.router import (
-    CrearServicioHandler,
-)
 from app.modules.socios_negocio.datos_maestros.activar_desactivar.router import (
     ActivarDesactivarHandler,
-)
-from app.modules.socios_negocio.gestion_clientes.actualizar_linea.router import (
-    ActualizarLineaHandler,
-)
-from app.modules.socios_negocio.log_precios.agregar_precio.router import (
-    AgregarPrecioHandler,
 )
 
 router = APIRouter(prefix="/uploads", tags=["uploads"])
@@ -33,9 +24,6 @@ logger = logging.getLogger(__name__)
 # fuera del allowlist de la acción seleccionada.
 HANDLERS = {
     "socios_negocio/datos_maestros/activar_desactivar": ActivarDesactivarHandler(),
-    "socios_negocio/gestion_clientes/actualizar_linea": ActualizarLineaHandler(),
-    "socios_negocio/log_precios/agregar_precio":        AgregarPrecioHandler(),
-    "compras/orden_compra/crear_servicio":              CrearServicioHandler(),
 }
 
 
@@ -51,8 +39,6 @@ async def upload_file(
 
     Ejemplos:
       POST /uploads/socios_negocio/datos_maestros/activar_desactivar
-      POST /uploads/socios_negocio/gestion_clientes/actualizar_linea
-      POST /uploads/compras/orden_compra/crear_servicio
     """
     handler = HANDLERS.get(module_path)
     if not handler:

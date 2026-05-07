@@ -70,59 +70,16 @@ export const MODULES: ModuleEntry[] = [
     code: "SN.GC",
     title: "Gestión de Clientes",
     path: "/uploads/gestion-clientes",
-    implemented: true,
+    implemented: false,
     category: "socios_negocio",
-    actions: [
-      {
-        id: "actualizar-linea",
-        title: "Actualizar datos comerciales",
-        apiPath: "socios_negocio/gestion_clientes/actualizar_linea",
-        schema: {
-          requiredColumns: ["Code", "LineId"],
-          optionalColumns: [
-            "U_NX_Margen",
-            "U_LMM_Precio_Estimado",
-            "U_LMM_Precio_Estimado_Neto",
-            "U_LMM_FI_SPOT",
-            "U_LMM_NC",
-            "U_NX_Capacidad",
-            "U_NX_CodArt",
-            "U_LMM_DescArt",
-            "U_LMM_ESP",
-            "U_LMM_Sucural",
-            "U_LMM_Formato",
-          ],
-          hint: "Cada fila actualiza una línea ya existente del cliente. U_NX_Margen va como decimal entre 0 y 1.",
-        },
-      },
-    ],
   },
   {
     roman: "III",
     code: "SN.LP",
     title: "Log de Precios",
     path: "/uploads/log-precios",
-    implemented: true,
+    implemented: false,
     category: "socios_negocio",
-    actions: [
-      {
-        id: "agregar-precio",
-        title: "Agregar precio",
-        apiPath: "socios_negocio/log_precios/agregar_precio",
-        schema: {
-          requiredColumns: ["Code", "U_NX_Fecha", "U_NX_Neto"],
-          optionalColumns: [
-            "U_NX_IE",
-            "U_NX_FEPPIEV",
-            "U_LMM_Esp",
-            "U_LMM_Esp_Flota",
-            "U_LMM_JLC_Real",
-            "U_LMM_Copec",
-          ],
-          hint: "Cada fila se agrega como nuevo precio histórico. IVA y total se calculan en el servidor.",
-        },
-      },
-    ],
   },
   // Compras
   {
@@ -138,30 +95,8 @@ export const MODULES: ModuleEntry[] = [
     code: "CO.OC",
     title: "Orden de Compra",
     path: "/uploads/orden-compra",
-    implemented: true,
+    implemented: false,
     category: "compras",
-    actions: [
-      {
-        id: "crear-servicio",
-        title: "Crear OC de servicio",
-        apiPath: "compras/orden_compra/crear_servicio",
-        schema: {
-          requiredColumns: [
-            "CardCode",
-            "SalesPersonCode",
-            "Comments",
-            "AccountCode",
-            "LineTotal",
-          ],
-          optionalColumns: [
-            "CostingCode",
-            "CostingCode2",
-            "BPL_IDAssignedToInvoice",
-          ],
-          hint: "Una fila = una OC de servicio con una línea contable.",
-        },
-      },
-    ],
   },
   {
     roman: "VI",

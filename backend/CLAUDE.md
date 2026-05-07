@@ -102,50 +102,18 @@ Los módulos sin implementar (Cotización de Compras, Factura de Proveedores, No
 
 ### Acciones implementadas
 
-Cada fila es un endpoint concreto. La columna "Schema" indica qué archivo del repo define el allowlist exacto.
+Cada fila es un endpoint concreto. Solo se crean acciones que tienen respaldo concreto en el repo de referencia [`Conexion_Service_Layer_SAP/`](../../Conexion_Service_Layer_SAP/) (la base de Pedro). El resto de funcionalidad SAP queda fuera del scope hasta que se identifique la acción Pedro-grounded correspondiente.
 
-| Módulo SAP | Acción | Endpoint | Operación SAP | Schema |
+| Módulo SAP | Acción | Endpoint | Operación SAP | Origen |
 |------------|--------|----------|---------------|--------|
-| Datos Maestros (BusinessPartners) | Activar / Desactivar | `socios_negocio/datos_maestros/activar_desactivar` | PATCH `BusinessPartners('{CardCode}')` con `Valid` + `Frozen` | `socios_negocio/datos_maestros/activar_desactivar/schema.py` |
-| Gestión de Clientes (NX_GCLIENTE) | Actualizar línea | `socios_negocio/gestion_clientes/actualizar_linea` | PATCH `NX_GCLIENTE('{Code}')` upsert por `LineId` en `NX_DETCLIENTECollection` | `socios_negocio/gestion_clientes/actualizar_linea/schema.py` |
-| Log de Precios (NX_LOGPRECIOS) | Agregar precio | `socios_negocio/log_precios/agregar_precio` | PATCH `NX_LOGPRECIOS('{Code}')` con línea nueva (append-only) | `socios_negocio/log_precios/agregar_precio/schema.py` |
-| Orden de Compra (PurchaseOrders) | Crear OC servicio | `compras/orden_compra/crear_servicio` | POST `PurchaseOrders` con `DocType="dDocument_Service"` | `compras/orden_compra/crear_servicio/schema.py` |
+| Datos Maestros (BusinessPartners) | Activar / Desactivar | `socios_negocio/datos_maestros/activar_desactivar` | PATCH `BusinessPartners('{CardCode}')` con `Valid` + `Frozen` | `Conexion_Service_Layer_SAP/clases/classsocio.py::SN.update_SN_activo` |
 
 #### Datos Maestros — Activar / Desactivar
 
 - Campos: `CardCode` (obligatorio) + **uno solo** de `Valid` / `Frozen` con `tYES` o `tNO`.
-- El opuesto se infiere y se incluye en el PATCH (SAP requiere ambos para que el cambio de estado tome efecto).
+- El opuesto se infiere y se incluye en el PATCH (SAP requiere ambos para que el cambio de estado tome efecto — ver `update_SN_activo` en classsocio.py).
 - Schema con `extra="forbid"`: cualquier columna adicional es rechazada por Pydantic.
 - Validador SAP: `card_code_exists`.
-
-#### Gestión de Clientes — Actualizar línea
-
-- Campos identificadores (obligatorios): `Code` (= CardCode del cliente, header), `LineId` (línea dentro de `NX_DETCLIENTECollection`).
-- Campos opcionales (allowlist `LINE_FIELDS`): `U_NX_Margen`, `U_LMM_Precio_Estimado`, `U_LMM_Precio_Estimado_Neto`, `U_LMM_FI_SPOT`, `U_LMM_NC`, `U_NX_Capacidad`, `U_NX_CodArt`, `U_LMM_DescArt`, `U_LMM_ESP`, `U_LMM_Sucural`, `U_LMM_Formato`.
-- `U_LMM_Sucural` (sin la 's' final) es **typo intencional en SAP** — no corregir.
-- `U_NX_Margen` debe ser decimal entre 0 y 1 (no porcentaje 0–100).
-- PATCH al header con `{"NX_DETCLIENTECollection": [{"Code": ..., "LineId": ..., <campos>}]}` upserta por `LineId` sin pisar otras líneas.
-- Validadores SAP: `nx_gcliente_exists(code)` + `nx_gcliente_line_exists(code, line_id)`.
-
-#### Log de Precios — Agregar precio
-
-- Append-only: cada fila se agrega como línea nueva en `NX_LOGDETALLECollection` (PATCH sin `LineId` → SAP B1 lo trata como nueva línea).
-- Obligatorios: `Code` (header), `U_NX_Fecha` (YYYY-MM-DD), `U_NX_Neto`.
-- Opcionales: `U_NX_IE`, `U_NX_FEPPIEV`, `U_LMM_Esp`, `U_LMM_Esp_Flota`, `U_LMM_JLC_Real`, `U_LMM_Copec`.
-- Calculados server-side (rechazados si vienen en el Excel): `U_NX_IVA = Neto * 0.19`, `U_NX_LineTotal = Neto + IVA + IE + FEPPIEV`.
-- Validador SAP: `nx_logprecios_exists(code)`.
-
-#### Orden de Compra — Crear OC servicio
-
-- Documento estándar SAP. Solo cubre OC tipo Servicio (`DocType="dDocument_Service"`) — sin items de inventario; la línea apunta a una cuenta contable.
-- **POST** a `/PurchaseOrders` (no PATCH — es un documento nuevo).
-- 1 fila Excel = 1 OC con 1 línea. Multi-línea queda como follow-up.
-- Cabecera obligatoria: `CardCode` (proveedor), `SalesPersonCode`, `Comments`.
-- Línea obligatoria: `AccountCode`, `LineTotal` (> 0).
-- `Comments` se usa también como `ItemDescription` de la línea (mismo patrón que el legacy del colega).
-- Opcionales: `CostingCode`, `CostingCode2` (dimensiones contables), `BPL_IDAssignedToInvoice` (sucursal — solo en SAP DBs multi-branch).
-- Schema usa `extra="forbid"`.
-- Validadores SAP: `card_code_exists` + `sales_person_exists` + `account_code_exists`.
 
 ### Documentos SAP estándar — POST vs PATCH
 
@@ -163,11 +131,11 @@ Los módulos UDO (Datos Maestros, Gestión de Clientes, Log de Precios) usan **P
 | BaseUploadHandler | ✅ | |
 | RowBase + DocumentLineBase | ✅ | shared schemas |
 | SAPValidator.card_code_exists | ✅ | shared validator |
-| **Datos Maestros — Activar / Desactivar** | ✅ | PATCH `BusinessPartners` con `Valid`+`Frozen` (uno provisto, opuesto inferido) |
-| **Gestión de Clientes — Actualizar línea** | ✅ | PATCH `NX_GCLIENTE` upsert por `LineId` en `NX_DETCLIENTECollection` |
-| **Log de Precios — Agregar precio** | ✅ | PATCH `NX_LOGPRECIOS` append-only; IVA y LineTotal calculados server-side |
-| **Orden de Compra — Crear OC servicio** | ✅ | POST `PurchaseOrders` `dDocument_Service`, 1 fila = 1 OC con 1 línea contable |
-| Cotización de Compras | ⬜ | sin scaffolding — se crea bajo el modelo de acciones cuando se implemente |
+| **Datos Maestros — Activar / Desactivar** | ✅ | PATCH `BusinessPartners` con `Valid`+`Frozen` (Pedro-grounded en `update_SN_activo`) |
+| Gestión de Clientes | ⬜ | sin acciones Pedro-grounded definidas todavía |
+| Log de Precios | ⬜ | sin acciones Pedro-grounded definidas todavía |
+| Orden de Compra | ⬜ | sin acciones Pedro-grounded definidas todavía |
+| Cotización de Compras | ⬜ | sin scaffolding |
 | Factura de Proveedores | ⬜ | bloqueado por repo de Pedro |
 | Nota de Venta | ⬜ | sin scaffolding |
 | Entrega | ⬜ | sin scaffolding |

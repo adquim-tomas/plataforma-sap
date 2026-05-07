@@ -153,10 +153,10 @@ Para módulos no implementados (`implemented: false`), `actions` es `undefined` 
 | Roman | Slug | Acciones implementadas | Backend |
 |-------|------|------------------------|---------|
 | I | `datos-maestros` | `activar-desactivar` | ✅ |
-| II | `gestion-clientes` | `actualizar-linea` | ✅ |
-| III | `log-precios` | `agregar-precio` | ✅ |
+| II | `gestion-clientes` | — | ⬜ |
+| III | `log-precios` | — | ⬜ |
 | IV | `cotizacion` | — | ⬜ |
-| V | `orden-compra` | `crear-servicio` | ✅ |
+| V | `orden-compra` | — | ⬜ |
 | VI | `factura-proveedor` | — | ⬜ |
 | VII | `nota-venta` | — | ⬜ |
 | VIII | `entrega` | — | ⬜ |
@@ -208,10 +208,10 @@ Para módulos no implementados (`implemented: false`), `actions` es `undefined` 
 | GET batches / audit | ⬜ | LAST RUN queda en `—` hasta que backend exponga |
 | UploadDropzone / UploadPreview / UploadSummary / ErrorReport / UploadPanel (shared) | ✅ | en `src/components/uploads/` — reutilizables por todos los módulos |
 | Preview pre-subida (parsing cliente + chequeo de columnas obligatorias + confirmación) | ✅ | `previewExcel()` en `lib/excel.ts` (read-excel-file). `ModuleSchema` por módulo en `lib/routes.ts` define `requiredColumns` |
-| **Datos Maestros** UI | ✅ | Página con selector de acción (tabs). Acción: **Activar / Desactivar** (`CardCode` + `Valid` o `Frozen`) |
-| **Gestión de Clientes** UI | ✅ | Página con selector de acción (tabs). Acción: **Actualizar datos comerciales** (`Code`, `LineId` + allowlist `U_*`) |
-| **Log de Precios** UI | ⬜ | Backend listo (acción `agregar-precio`); cae al `ModulePlaceholderPage` hasta construir su página |
-| **Orden de Compra** UI | ⬜ | Backend listo (acción `crear-servicio`); cae al `ModulePlaceholderPage` hasta construir su página |
+| **Datos Maestros** UI | ✅ | Página con selector de acción (tabs). Acción única: **Activar / Desactivar** (`CardCode` + `Valid` o `Frozen`) |
+| **Gestión de Clientes** UI | ⬜ | sin backend |
+| **Log de Precios** UI | ⬜ | sin backend |
+| **Orden de Compra** UI | ⬜ | sin backend |
 | **Cotización de Compras** UI | ⬜ | sin backend |
 | **Factura de Proveedores** UI | ⬜ | sin backend (bloqueado por repo de Pedro) |
 | **Nota de Venta** UI | ⬜ | sin backend |

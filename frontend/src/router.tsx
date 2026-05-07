@@ -3,7 +3,6 @@ import { createBrowserRouter } from "react-router-dom"
 import { AppShell } from "@/components/layout/AppShell"
 import { RequireAuth } from "@/components/auth/RequireAuth"
 import { DatosMaestrosPage } from "@/pages/datos-maestros"
-import { GestionClientesPage } from "@/pages/gestion-clientes"
 import { HomePage } from "@/pages/home"
 import { LoginPage } from "@/pages/login"
 import { ModulePlaceholderPage } from "@/pages/module-placeholder"
@@ -24,7 +23,6 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <HomePage /> },
       { path: "uploads/datos-maestros", element: <DatosMaestrosPage /> },
-      { path: "uploads/gestion-clientes", element: <GestionClientesPage /> },
       { path: "uploads/:slug", element: <ModulePlaceholderPage /> },
     ],
   },
