@@ -6,28 +6,44 @@ import { Label } from "@/components/atoms/Label"
 import { Button } from "@/components/ui/button"
 import { ErrorReport } from "@/components/uploads/ErrorReport"
 import { UploadDropzone } from "@/components/uploads/UploadDropzone"
+import { UploadPreview } from "@/components/uploads/UploadPreview"
 import { UploadSummary } from "@/components/uploads/UploadSummary"
+import { previewExcel, type ExcelPreview } from "@/lib/excel"
+import type { ModuleSchema } from "@/lib/routes"
 import { uploadModule } from "@/lib/uploads"
 import { useSapHealth } from "@/lib/useSapHealth"
 import type { UploadResult } from "@/types"
 
 type Phase =
   | { kind: "idle" }
+  | { kind: "picked"; file: File; preview: ExcelPreview }
   | { kind: "uploading"; filename: string }
   | { kind: "done"; result: UploadResult }
   | { kind: "failed"; message: string }
 
 interface UploadPanelProps {
   apiPath: string
+  schema?: ModuleSchema
 }
 
 const SAP_SESSION_ERROR_CODES = new Set([-2028, 301])
 
-export function UploadPanel({ apiPath }: UploadPanelProps) {
+export function UploadPanel({ apiPath, schema }: UploadPanelProps) {
   const [phase, setPhase] = useState<Phase>({ kind: "idle" })
   const { refresh: refreshSapHealth } = useSapHealth()
 
   const handleFile = async (file: File) => {
+    try {
+      const preview = await previewExcel(file)
+      setPhase({ kind: "picked", file, preview })
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "No se pudo leer el archivo."
+      setPhase({ kind: "failed", message })
+    }
+  }
+
+  const submit = async (file: File) => {
     setPhase({ kind: "uploading", filename: file.name })
     try {
       const result = await uploadModule(apiPath, file)
@@ -55,6 +71,15 @@ export function UploadPanel({ apiPath }: UploadPanelProps) {
   return (
     <div className="flex flex-col gap-4">
       {phase.kind === "idle" && <UploadDropzone onFile={handleFile} />}
+
+      {phase.kind === "picked" && (
+        <UploadPreview
+          preview={phase.preview}
+          schema={schema}
+          onConfirm={() => submit(phase.file)}
+          onCancel={reset}
+        />
+      )}
 
       {phase.kind === "uploading" && (
         <div className="flex h-32 flex-col items-center justify-center gap-2 border border-dashed border-border-strong bg-elev">

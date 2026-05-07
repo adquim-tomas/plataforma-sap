@@ -4,6 +4,15 @@
 
 export type ModuleCategory = "socios_negocio" | "compras" | "ventas"
 
+export interface ModuleSchema {
+  /** Columnas obligatorias en el header del Excel */
+  requiredColumns: string[]
+  /** Columnas opcionales reconocidas (whitelist informativa, no bloquea) */
+  optionalColumns?: string[]
+  /** Mensaje breve para el operador: qué actualiza este módulo */
+  hint?: string
+}
+
 export interface ModuleEntry {
   roman: string
   code: string
@@ -15,6 +24,8 @@ export interface ModuleEntry {
   /** ¿Handler ya registrado en backend HANDLERS? */
   implemented: boolean
   category: ModuleCategory
+  /** Estructura esperada del Excel — usada por el preview pre-subida */
+  schema?: ModuleSchema
 }
 
 export const MODULES: ModuleEntry[] = [
@@ -27,6 +38,10 @@ export const MODULES: ModuleEntry[] = [
     apiPath: "socios_negocio/datos_maestros",
     implemented: true,
     category: "socios_negocio",
+    schema: {
+      requiredColumns: ["CardCode"],
+      hint: "El CardCode identifica al socio. Las demás columnas se actualizan solo si vienen con valor.",
+    },
   },
   {
     roman: "II",
@@ -36,6 +51,23 @@ export const MODULES: ModuleEntry[] = [
     apiPath: "socios_negocio/gestion_clientes",
     implemented: true,
     category: "socios_negocio",
+    schema: {
+      requiredColumns: ["Code", "LineId"],
+      optionalColumns: [
+        "U_NX_Margen",
+        "U_LMM_Precio_Estimado",
+        "U_LMM_Precio_Estimado_Neto",
+        "U_LMM_FI_SPOT",
+        "U_LMM_NC",
+        "U_NX_Capacidad",
+        "U_NX_CodArt",
+        "U_LMM_DescArt",
+        "U_LMM_ESP",
+        "U_LMM_Sucural",
+        "U_LMM_Formato",
+      ],
+      hint: "Cada fila actualiza una línea ya existente del cliente. U_NX_Margen va como decimal entre 0 y 1.",
+    },
   },
   {
     roman: "III",

@@ -199,10 +199,11 @@ Slugs y `apiPath` son la fuente única en [`src/lib/routes.ts`](src/lib/routes.t
 | **SAP heartbeat real** | ✅ | hook `useSapHealth` (15s polling, pausa con visibilitychange) → backend `GET /api/v1/health/sap` |
 | Keyboard shortcuts handlers | ⬜ | hints visibles, sin behavior |
 | GET batches / audit | ⬜ | LAST RUN queda en `—` hasta que backend exponga |
-| UploadDropzone / UploadSummary / ErrorReport / UploadPanel (shared) | ✅ | en `src/components/uploads/` — reutilizables por todos los módulos |
+| UploadDropzone / UploadPreview / UploadSummary / ErrorReport / UploadPanel (shared) | ✅ | en `src/components/uploads/` — reutilizables por todos los módulos |
+| Preview pre-subida (parsing cliente + chequeo de columnas obligatorias + confirmación) | ✅ | `previewExcel()` en `lib/excel.ts` (read-excel-file). `ModuleSchema` por módulo en `lib/routes.ts` define `requiredColumns` |
 | **Datos Maestros SN** UI | ✅ | spec + schema esperado + reglas + UploadPanel |
 | **Log de Precios** UI | ⬜ | |
-| **Gestión de Clientes** UI | ⬜ | |
+| **Gestión de Clientes** UI | ✅ | UploadPanel + schema (`Code`, `LineId` requeridos; allowlist de campos U_* opcionales) |
 | **Cotización de Compras** UI | ⬜ | |
 | **Orden de Compra** UI | ⬜ | |
 | **Factura de Proveedores** UI | ⬜ | |

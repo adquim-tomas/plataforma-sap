@@ -5,9 +5,9 @@ import { Button } from "@/components/ui/button"
 import { UploadPanel } from "@/components/uploads/UploadPanel"
 import { findModuleByPath } from "@/lib/routes"
 
-const PATH = "/uploads/datos-maestros"
+const PATH = "/uploads/gestion-clientes"
 
-export function DatosMaestrosPage() {
+export function GestionClientesPage() {
   const navigate = useNavigate()
   const module = findModuleByPath(PATH)
 
@@ -19,9 +19,9 @@ export function DatosMaestrosPage() {
       <div className="flex items-baseline justify-between border-b border-border-strong pb-3">
         <div>
           <Label>socios de negocio</Label>
-          <h1 className="mt-1 text-lg font-medium">Datos maestros</h1>
+          <h1 className="mt-1 text-lg font-medium">Gestión de Clientes</h1>
           <p className="mt-1 text-[0.82rem] text-muted-foreground">
-            Actualiza información de clientes y proveedores que ya existen en SAP.
+            Actualiza los datos comerciales de tus clientes — márgenes, precios estimados, capacidad, formato y sucursal.
           </p>
         </div>
         <Button
