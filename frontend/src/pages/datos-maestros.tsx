@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom"
 
 import { Label } from "@/components/atoms/Label"
 import { Button } from "@/components/ui/button"
+import { ActionHelp } from "@/components/uploads/ActionHelp"
 import { UploadPanel } from "@/components/uploads/UploadPanel"
 import { findModuleByPath } from "@/lib/routes"
 import { cn } from "@/lib/utils"
@@ -72,6 +73,13 @@ export function DatosMaestrosPage() {
           })}
         </div>
       </section>
+
+      {/* Ayuda — descripción + plantilla descargable + tabla de columnas */}
+      <ActionHelp
+        key={`help-${selected.id}`}
+        help={selected.help}
+        actionTitle={selected.title}
+      />
 
       {/* Upload de la acción seleccionada */}
       <section>

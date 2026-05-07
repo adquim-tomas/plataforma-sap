@@ -1,5 +1,6 @@
 import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from alembic import command
 from alembic.config import Config
@@ -8,6 +9,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.api.v1.router import router
 from app.core.config import settings
@@ -178,5 +180,9 @@ async def _handle_unexpected(request: Request, exc: Exception) -> JSONResponse:
         message="Error interno del servidor.",
     )
 
+
+# Plantillas .xlsx descargables por acción — servidas en /static/templates/{archivo}
+_STATIC_DIR = Path(__file__).parent / "static"
+app.mount("/static", StaticFiles(directory=_STATIC_DIR), name="static")
 
 app.include_router(router)
