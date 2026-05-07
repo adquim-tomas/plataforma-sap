@@ -32,6 +32,28 @@ Apodo del sistema: **Bitácora** (registro de operaciones — apto al dominio: c
 3. **Una sola voz tipográfica** — JetBrains Mono Variable en todo. Jerarquía por **peso + tamaño**, no por familia.
 4. **Status visible siempre** — `StatusBar` superior y `CommandBar` inferior siempre presentes. `usuario · company.db · hora · sap● · keyboard hints`.
 5. **Pistas de teclado a la vista** — cada vista expone los hints relevantes (`[ENTER]`, `[ESC]`, `[/]` index). Los handlers reales son follow-up; los hints sientan el tono operativo.
+6. **Idioma** — Español neutro
+7. **Vocabulario de negocio, no de implementación** — la audiencia son operadores que viven en Excel y conocen SAP, no desarrolladores. La densidad terminal aplica al *layout* (info densa, sin tarjetas, hairlines), **no al *vocabulario***.
+
+### Audiencia y copy de las páginas de módulo
+
+Las páginas que un operador usa (todas las de `/uploads/*`) deben hablar su idioma:
+
+**No mostrar:**
+- Paths de API (`/api/v1/uploads/...`), códigos internos del módulo (`SN.DM`), números romanos del registro, paths del frontend.
+- "Specification sheets", tablas estilo doc de API ("schema · columnas esperadas", "allowlist", "endpoint").
+- Términos como `PATCH`/`POST`, "Pydantic", "validation source", "request shape".
+
+**Sí mostrar:**
+- Título + subtítulo en lenguaje plano: qué hace esta pantalla.
+- Instrucciones en pasos cortos (subí, descargá, revisá).
+- Reglas de negocio explicadas con ejemplos, no como bullets técnicos.
+- La acción principal (subir archivo) dominante visualmente.
+- Resultados legibles ("X filas actualizadas, Y fallaron — abajo el detalle").
+
+Términos SAP que sí pueden aparecer (porque el operador los ve en su Excel diario): `CardCode`, `CardType`, `AddressType`, nombres de campos `U_*`, valores enum como `cCustomer`/`bo_BillTo`. No son jerga de implementación, son su lenguaje cotidiano.
+
+La excepción son páginas internas/diagnóstico (404, módulos sin handler, futuras vistas de admin) — esas sí pueden ser técnicas.
 
 ### Paleta — light canónico (slate frío)
 
@@ -85,6 +107,7 @@ Light mode es la **dirección canónica**. El dark mode existe declarado en `.da
 | `StatusPill` | `src/components/atoms/StatusPill.tsx` | Pill 18px alto, variantes `ok/pending/fail/partial/info`. Solo semántica, no decoración. |
 | `HeartbeatDot` | `src/components/atoms/HeartbeatDot.tsx` | 7px círculo pulsante (CSS keyframe). Variantes `ok/fail/pending`. Prop `still` desactiva la animación. |
 | `KbdHint` + `KbdAction` | `src/components/atoms/KbdHint.tsx` | `<kbd>` con borde + label muted. `KbdAction` es el patrón `[KEY] descripción`. |
+| `SapHeartbeat` | `src/components/atoms/SapHeartbeat.tsx` | `HeartbeatDot` vivo — refleja la sesión SAP del backend vía `useSapHealth()`. Verde/rojo/gris real. |
 
 ### Tipografía
 
@@ -114,7 +137,8 @@ Configuración en [`src/router.tsx`](src/router.tsx) usando `createBrowserRouter
 |------|-----------|------|
 | `/auth/login` | `LoginPage` | público |
 | `/` | `AppShell` → `HomePage` | requerida |
-| `/uploads/:slug` | `AppShell` → `ModulePlaceholderPage` | requerida |
+| `/uploads/datos-maestros` | `AppShell` → `DatosMaestrosPage` | requerida |
+| `/uploads/:slug` | `AppShell` → `ModulePlaceholderPage` (fallback) | requerida |
 | `*` | `NotFoundPage` | público |
 
 Slugs y `apiPath` son la fuente única en [`src/lib/routes.ts`](src/lib/routes.ts) (registro `MODULES`).
@@ -167,16 +191,16 @@ Slugs y `apiPath` son la fuente única en [`src/lib/routes.ts`](src/lib/routes.t
 | Routing base (react-router-dom v7) | ✅ | 4 rutas en `router.tsx` |
 | Auth (login + JWT en localStorage) | ✅ | `AuthProvider`, `useAuth`, `RequireAuth` |
 | API client (axios + 401 redirect) | ✅ | `lib/api.ts` |
-| Atomos (Label, StatusPill, HeartbeatDot, KbdHint) | ✅ | |
-| Login page (terminal init prompt) | ✅ | |
-| Home page (KPI strip + modules table) | ✅ | TOKEN EXPIRES cuenta atrás c/segundo |
+| Atomos (Label, StatusPill, HeartbeatDot, KbdHint, SapHeartbeat) | ✅ | SapHeartbeat consume `useSapHealth()` |
+| Login page (terminal init prompt) | ✅ | dots decorativos quedan `still` |
+| Home page (KPI strip + modules table) | ✅ | TOKEN EXPIRES cuenta atrás c/segundo · SAP SESSION en vivo |
 | ModulePlaceholder (spec sheet) | ✅ | |
 | 404 page (route not registered) | ✅ | |
+| **SAP heartbeat real** | ✅ | hook `useSapHealth` (15s polling, pausa con visibilitychange) → backend `GET /api/v1/health/sap` |
 | Keyboard shortcuts handlers | ⬜ | hints visibles, sin behavior |
 | GET batches / audit | ⬜ | LAST RUN queda en `—` hasta que backend exponga |
-| UploadTable (shared) | ⬜ | |
-| ErrorReport (shared) | ⬜ | |
-| **Datos Maestros SN** UI | ⬜ | |
+| UploadDropzone / UploadSummary / ErrorReport / UploadPanel (shared) | ✅ | en `src/components/uploads/` — reutilizables por todos los módulos |
+| **Datos Maestros SN** UI | ✅ | spec + schema esperado + reglas + UploadPanel |
 | **Log de Precios** UI | ⬜ | |
 | **Gestión de Clientes** UI | ⬜ | |
 | **Cotización de Compras** UI | ⬜ | |
@@ -196,5 +220,6 @@ Slugs y `apiPath` son la fuente única en [`src/lib/routes.ts`](src/lib/routes.t
 - Cambie el design system (paleta, tokens, decoraciones).
 - Se agregue un atomo, layout primitive o utilidad compartida.
 - Cambie la estructura de directorios.
+- Cambien las reglas de copy/audiencia (sección "Audiencia y copy de las páginas de módulo").
 
 **Instrucción:** Editar solo las secciones afectadas. Si se agrega un módulo, también actualizar `MODULES` en `src/lib/routes.ts`.

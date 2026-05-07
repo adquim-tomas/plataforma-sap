@@ -53,3 +53,15 @@ export interface UploadResult {
   status: string
   errors: RowError[]
 }
+
+// ── Health (`backend/app/api/v1/endpoints/health.py`) ────────────────────────
+
+export type SapHealthCode = "ok" | "auth" | "connection" | "timeout" | "error"
+
+export interface SapHealth {
+  ok: boolean
+  code: SapHealthCode
+  message?: string | null
+  expires_at?: string | null
+  checked_at: string
+}

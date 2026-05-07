@@ -35,7 +35,7 @@ export function CommandBar({ hints = DEFAULT_HINTS, className }: CommandBarProps
 
       {/* Spacer + brand reminder a la derecha */}
       <span className="ml-auto text-[0.65rem] text-muted-foreground">
-        adquim · SAP b1 service layer
+        adquim · SAP B1 service layer
       </span>
     </footer>
   )

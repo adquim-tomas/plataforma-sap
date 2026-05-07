@@ -1,0 +1,99 @@
+import { useState } from "react"
+import { isAxiosError } from "axios"
+
+import { HeartbeatDot } from "@/components/atoms/HeartbeatDot"
+import { Label } from "@/components/atoms/Label"
+import { Button } from "@/components/ui/button"
+import { ErrorReport } from "@/components/uploads/ErrorReport"
+import { UploadDropzone } from "@/components/uploads/UploadDropzone"
+import { UploadSummary } from "@/components/uploads/UploadSummary"
+import { uploadModule } from "@/lib/uploads"
+import { useSapHealth } from "@/lib/useSapHealth"
+import type { UploadResult } from "@/types"
+
+type Phase =
+  | { kind: "idle" }
+  | { kind: "uploading"; filename: string }
+  | { kind: "done"; result: UploadResult }
+  | { kind: "failed"; message: string }
+
+interface UploadPanelProps {
+  apiPath: string
+}
+
+const SAP_SESSION_ERROR_CODES = new Set([-2028, 301])
+
+export function UploadPanel({ apiPath }: UploadPanelProps) {
+  const [phase, setPhase] = useState<Phase>({ kind: "idle" })
+  const { refresh: refreshSapHealth } = useSapHealth()
+
+  const handleFile = async (file: File) => {
+    setPhase({ kind: "uploading", filename: file.name })
+    try {
+      const result = await uploadModule(apiPath, file)
+      // Si SAP rechazó por sesión caída, refrescar el heartbeat global.
+      const sessionDown = result.errors.some(
+        (e) =>
+          e.source === "sap" &&
+          e.sap_code != null &&
+          SAP_SESSION_ERROR_CODES.has(e.sap_code),
+      )
+      if (sessionDown) refreshSapHealth()
+      setPhase({ kind: "done", result })
+    } catch (err) {
+      const message = isAxiosError(err)
+        ? err.response?.data?.message ?? err.message
+        : err instanceof Error
+          ? err.message
+          : "Error desconocido."
+      setPhase({ kind: "failed", message })
+    }
+  }
+
+  const reset = () => setPhase({ kind: "idle" })
+
+  return (
+    <div className="flex flex-col gap-4">
+      {phase.kind === "idle" && <UploadDropzone onFile={handleFile} />}
+
+      {phase.kind === "uploading" && (
+        <div className="flex h-32 flex-col items-center justify-center gap-2 border border-dashed border-border-strong bg-elev">
+          <div className="flex items-center gap-2">
+            <HeartbeatDot kind="pending" />
+            <Label className="text-foreground">subiendo</Label>
+          </div>
+          <span className="text-[0.74rem] text-muted-foreground">
+            {phase.filename}
+          </span>
+        </div>
+      )}
+
+      {phase.kind === "failed" && (
+        <>
+          <div className="border border-fail/40 bg-elev px-4 py-3">
+            <Label className="text-fail">error de carga</Label>
+            <p className="mt-1 text-[0.82rem]">{phase.message}</p>
+          </div>
+          <UploadDropzone onFile={handleFile} />
+        </>
+      )}
+
+      {phase.kind === "done" && (
+        <>
+          <UploadSummary result={phase.result} />
+          <div className="flex items-center justify-between">
+            <span className="text-[0.72rem] text-muted-foreground">
+              batch <span className="tabular-nums">#{phase.result.batch_id}</span>
+              {" · "}
+              <span>{phase.result.filename}</span>
+            </span>
+            <Button variant="outline" size="sm" onClick={reset}>
+              subir otro
+            </Button>
+          </div>
+          <ErrorReport errors={phase.result.errors} />
+        </>
+      )}
+    </div>
+  )
+}

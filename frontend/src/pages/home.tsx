@@ -6,7 +6,20 @@ import { Label } from "@/components/atoms/Label"
 import { StatusPill } from "@/components/atoms/StatusPill"
 import { useAuth } from "@/lib/auth"
 import { MODULES, type ModuleEntry } from "@/lib/routes"
+import { useSapHealth } from "@/lib/useSapHealth"
 import { cn } from "@/lib/utils"
+
+const SAP_LABEL: Record<"ok" | "fail" | "pending", string> = {
+  ok: "online",
+  fail: "offline",
+  pending: "verificando",
+}
+
+const SAP_TEXT: Record<"ok" | "fail" | "pending", string> = {
+  ok: "text-ok",
+  fail: "text-fail",
+  pending: "text-muted-foreground",
+}
 
 function fmtCountdown(secondsTotal: number): string {
   if (secondsTotal <= 0) return "—"
@@ -47,6 +60,7 @@ export function HomePage() {
   const { payload } = useAuth()
   const expiresIn = useTokenCountdown(payload?.exp)
   const ready = MODULES.filter((m) => m.implemented).length
+  const sap = useSapHealth()
 
   return (
     <div className="flex flex-col gap-6">
@@ -90,8 +104,8 @@ export function HomePage() {
 
         <KpiCell label="sap session">
           <span className="flex items-center gap-2 text-base font-medium">
-            <HeartbeatDot kind="ok" />
-            <span className="text-ok">online</span>
+            <HeartbeatDot kind={sap.kind} />
+            <span className={SAP_TEXT[sap.kind]}>{SAP_LABEL[sap.kind]}</span>
           </span>
         </KpiCell>
 

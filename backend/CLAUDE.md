@@ -82,7 +82,10 @@ router.py       # FastAPI router → registrado en /api/v1/uploads/{module_path}
 |--------|-----------|
 | Auth | `/api/v1/auth` |
 | Audit | `/api/v1/audit` |
+| Health | `/api/v1/health` |
 | Uploads | `/api/v1/uploads/{module_path}` |
+
+`GET /api/v1/health/sap` reporta el estado del service account contra SAP. Siempre responde 200 con `{ ok, code, expires_at?, checked_at, message? }`. El frontend pollea esto cada 15s para alimentar el `HeartbeatDot` del StatusBar.
 
 ---
 

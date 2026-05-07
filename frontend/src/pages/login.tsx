@@ -25,6 +25,7 @@ export function LoginPage() {
 
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
   const [companyDb, setCompanyDb] = useState(COMPANY_DBS[1])
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -66,10 +67,10 @@ export function LoginPage() {
     <div className="grid h-screen grid-rows-[auto_1fr_auto] bg-background text-foreground">
       {/* Top mini-bar pegada visualmente al StatusBar de la app autenticada */}
       <div className="flex h-7 items-center justify-between border-b border-border-strong bg-background px-4 text-[0.74rem]">
-        <span className="font-bold tracking-[0.14em]">PEDROPEDIA</span>
+        <span className="font-bold tracking-[0.14em]">ADQUIM</span>
         <span className="flex items-center gap-1.5 text-muted-foreground">
-          <HeartbeatDot kind="ok" />
-          <span className="text-[0.7rem] text-ok">SAP endpoint online</span>
+          <HeartbeatDot kind="ok" still />
+          <span className="text-[0.7rem] text-muted-foreground">SAP endpoint</span>
         </span>
       </div>
 
@@ -84,15 +85,15 @@ export function LoginPage() {
         >
           {/* Header */}
           <div className="flex items-center justify-between border-b border-border-strong px-5 py-3">
-            <Label>session initialization</Label>
+            <Label>inicio de sesión</Label>
             <Label>auth · v1</Label>
           </div>
 
           {/* Form body */}
           <div className="grid gap-4 px-5 py-6">
             <PromptField
-              prompt="username"
-              hint="tu username operativo en SAP b1"
+              prompt="usuario"
+              hint="tu username operativo en SAP B1"
             >
               <input
                 type="text"
@@ -105,15 +106,36 @@ export function LoginPage() {
               />
             </PromptField>
 
-            <PromptField prompt="password" hint="las credenciales no se almacenan">
-              <input
-                type="password"
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className={inputClass}
-              />
+            <PromptField prompt="contraseña" hint="las credenciales no se almacenan">
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className={`${inputClass} pr-8`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((s) => !s)}
+                  aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                  className="absolute right-1 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showPassword ? (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-5 0-9.27-3-11-8 1.08-2.62 2.99-4.78 5.48-6.08" />
+                      <path d="M1 1l22 22" />
+                      <path d="M9.88 9.88A3 3 0 0 0 14.12 14.12" />
+                    </svg>
+                  ) : (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </svg>
+                  )}
+                </button>
+              </div>
             </PromptField>
 
             <PromptField prompt="company.db" hint="base de datos SAP destino">
@@ -143,13 +165,13 @@ export function LoginPage() {
           <div className="grid grid-cols-2 gap-2 border-t border-border px-5 py-2 text-[0.7rem]">
             <div className="flex items-center gap-2">
               <span className="text-muted-foreground">status</span>
-              <span className="flex items-center gap-1.5 text-ok">
-                <HeartbeatDot kind="ok" />
-                online
+              <span className="flex items-center gap-1.5 text-muted-foreground">
+                <HeartbeatDot kind="ok" still />
+                listo
               </span>
             </div>
             <div className="flex items-center justify-end gap-2">
-              <span className="text-muted-foreground">expires</span>
+              <span className="text-muted-foreground">vence</span>
               <span className="text-foreground">~60m post-auth</span>
             </div>
           </div>
@@ -166,7 +188,7 @@ export function LoginPage() {
                 disabled:opacity-60
               "
             >
-              {loading ? "verifying…" : "[ enter ]  authenticate"}
+              {loading ? "verifying…" : "iniciar sesión"}
             </Button>
 
             {error && (
@@ -180,13 +202,7 @@ export function LoginPage() {
 
       {/* Bottom mini command bar */}
       <div className="flex h-6 items-center gap-5 border-t border-border bg-elev px-4 text-[0.7rem] text-muted-foreground">
-        <span>
-          [ENTER] <span className="ml-1 text-foreground/80">authenticate</span>
-        </span>
-        <span>
-          [TAB] <span className="ml-1 text-foreground/80">next field</span>
-        </span>
-        <span className="ml-auto">adquim · SAP b1 service layer</span>
+        <span className="ml-auto">adquim · SAP B1 service layer</span>
       </div>
     </div>
   )

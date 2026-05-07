@@ -4,6 +4,22 @@ import { HeartbeatDot } from "@/components/atoms/HeartbeatDot"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth"
 import { findModuleByPath } from "@/lib/routes"
+import { useSapHealth } from "@/lib/useSapHealth"
+import { cn } from "@/lib/utils"
+
+const SAP_TEXT_CLASS = {
+  ok: "text-ok",
+  fail: "text-fail",
+  pending: "text-muted-foreground",
+} as const
+
+const SAP_CODE_LABEL: Record<string, string> = {
+  ok: "sesión activa",
+  auth: "credenciales del service account inválidas",
+  connection: "no se pudo conectar a SAP",
+  timeout: "SAP no respondió a tiempo",
+  error: "error inesperado de SAP",
+}
 
 /**
  * StatusBar — barra superior fija. Tres bloques en una sola línea de 28px.
@@ -12,6 +28,7 @@ import { findModuleByPath } from "@/lib/routes"
 export function StatusBar() {
   const { payload, logout } = useAuth()
   const { pathname } = useLocation()
+  const sap = useSapHealth()
 
   const module = findModuleByPath(pathname)
   const breadcrumb =
@@ -20,6 +37,19 @@ export function StatusBar() {
       : module
         ? `/ uploads / ${module.code.toLowerCase()}`
         : `/ ${pathname.replace(/^\//, "")}`
+
+  const sapTitle = sap.health
+    ? [
+        `SAP · ${SAP_CODE_LABEL[sap.health.code] ?? sap.health.code}`,
+        sap.health.expires_at
+          ? `Expira: ${new Date(sap.health.expires_at).toLocaleTimeString()}`
+          : null,
+        `Última verificación: ${new Date(sap.health.checked_at).toLocaleTimeString()}`,
+        sap.health.message ?? null,
+      ]
+        .filter(Boolean)
+        .join("\n")
+    : "SAP · verificando…"
 
   return (
     <header
@@ -32,7 +62,7 @@ export function StatusBar() {
       {/* Izquierda — brand */}
       <div className="flex items-center gap-2">
         <span className="font-bold tracking-[0.14em] text-foreground">
-          PEDROPEDIA
+          ADQUIM
         </span>
         {/* <span className="text-muted-foreground">·</span> */}
         {/* <span className="text-muted-foreground">v1.0</span> */}
@@ -53,9 +83,9 @@ export function StatusBar() {
             <span className="text-muted-foreground">·</span>
           </>
         )}
-        <span className="flex items-center gap-1.5">
-          <HeartbeatDot kind="ok" />
-          <span className="text-[0.7rem] text-ok">SAP</span>
+        <span className="flex items-center gap-1.5" title={sapTitle}>
+          <HeartbeatDot kind={sap.kind} />
+          <span className={cn("text-[0.7rem]", SAP_TEXT_CLASS[sap.kind])}>SAP</span>
         </span>
         {payload && (
           <>

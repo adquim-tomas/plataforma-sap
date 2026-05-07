@@ -63,6 +63,12 @@ El usuario sube un Excel; las filas válidas se insertan en SAP y las inválidas
 
 ---
 
+## Audiencia del producto
+
+El producto lo usan **operadores que viven en Excel y conocen SAP** — no desarrolladores. Las páginas de carga (`/uploads/*`) hablan lenguaje de negocio: nada de paths de API, "specification sheets", códigos internos de módulo (`SN.DM`), `PATCH`/`POST`, ni jerga de implementación. Términos SAP que el operador ve en su Excel (`CardCode`, `CardType`, `AddressType`, etc.) **sí** son aceptables. Detalle completo en [`frontend/CLAUDE.md`](frontend/CLAUDE.md).
+
+---
+
 ## Estructura del Repo
 
 ```
