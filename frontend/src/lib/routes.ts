@@ -13,19 +13,41 @@ export interface ModuleSchema {
   hint?: string
 }
 
+export interface ModuleAction {
+  /** Identificador estable de la acción (slug). */
+  id: string
+  /** Título legible para el operador. */
+  title: string
+  /** Path completo del backend (`/api/v1/uploads/{apiPath}`). */
+  apiPath: string
+  /** Estructura esperada del Excel para esta acción. */
+  schema: ModuleSchema
+}
+
+/**
+ * Un módulo expone uno de dos modelos:
+ *  - Particionado en acciones (`actions`): cada acción tiene su propio
+ *    endpoint y schema. La página del módulo muestra un selector y solo
+ *    deja subir archivos para la acción elegida.
+ *  - Endpoint directo (`apiPath` + `schema` opcional): el módulo tiene un
+ *    único endpoint genérico. Modelo legacy que se está migrando hacia el
+ *    de acciones.
+ */
 export interface ModuleEntry {
   roman: string
   code: string
   title: string
   /** Path del frontend (ruta react-router) */
   path: string
-  /** Path del backend (`/api/v1/uploads/{apiPath}`) */
-  apiPath: string
   /** ¿Handler ya registrado en backend HANDLERS? */
   implemented: boolean
   category: ModuleCategory
-  /** Estructura esperada del Excel — usada por el preview pre-subida */
+  /** Endpoint directo cuando el módulo NO está particionado en acciones */
+  apiPath?: string
+  /** Schema directo cuando el módulo NO está particionado en acciones */
   schema?: ModuleSchema
+  /** Acciones disponibles cuando el módulo SÍ está particionado */
+  actions?: ModuleAction[]
 }
 
 export const MODULES: ModuleEntry[] = [
@@ -35,13 +57,20 @@ export const MODULES: ModuleEntry[] = [
     code: "SN.DM",
     title: "Datos Maestros",
     path: "/uploads/datos-maestros",
-    apiPath: "socios_negocio/datos_maestros",
     implemented: true,
     category: "socios_negocio",
-    schema: {
-      requiredColumns: ["CardCode"],
-      hint: "El CardCode identifica al socio. Las demás columnas se actualizan solo si vienen con valor.",
-    },
+    actions: [
+      {
+        id: "activar-desactivar",
+        title: "Activar / Desactivar",
+        apiPath: "socios_negocio/datos_maestros/activar_desactivar",
+        schema: {
+          requiredColumns: ["CardCode"],
+          optionalColumns: ["Valid", "Frozen"],
+          hint: "CardCode + Valid o Frozen (uno solo, con tYES o tNO). El opuesto se completa automáticamente.",
+        },
+      },
+    ],
   },
   {
     roman: "II",

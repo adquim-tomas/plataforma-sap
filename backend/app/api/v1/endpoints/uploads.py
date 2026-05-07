@@ -12,22 +12,26 @@ from app.schemas.auth import TokenPayload
 
 # Importar handlers de cada módulo — se agregan a medida que se implementan
 from app.modules.compras.orden_compra.router import OrdenCompraHandler
-from app.modules.socios_negocio.datos_maestros.router import DatosMaestrosHandler
+from app.modules.socios_negocio.datos_maestros.activar_desactivar.router import (
+    ActivarDesactivarHandler,
+)
 from app.modules.socios_negocio.gestion_clientes.router import GestionClientesHandler
 from app.modules.socios_negocio.log_precios.router import LogPreciosHandler
 
 router = APIRouter(prefix="/uploads", tags=["uploads"])
 logger = logging.getLogger(__name__)
 
-# Registro de handlers por módulo
-# key: nombre que viene en el request
-# value: instancia del handler
+# Registro de handlers — cada clave es un endpoint específico de carga.
+# Los módulos migrados al modelo "una acción = un endpoint" expanden la clave
+# con el sufijo `/<accion>`. Los todavía sin migrar exponen el handler directo
+# del módulo (estructura legacy, pendiente de partir en acciones).
 HANDLERS = {
-    "socios_negocio/datos_maestros":   DatosMaestrosHandler(),
+    # socios_negocio/datos_maestros: ahora particionado por acción
+    "socios_negocio/datos_maestros/activar_desactivar": ActivarDesactivarHandler(),
+    # módulos sin migrar al modelo de acciones
     "socios_negocio/gestion_clientes": GestionClientesHandler(),
     "socios_negocio/log_precios":      LogPreciosHandler(),
     "compras/orden_compra":            OrdenCompraHandler(),
-    # ... se agregan a medida que se implementan
 }
 
 
@@ -39,10 +43,10 @@ async def upload_file(
     db: Session = Depends(get_db),
 ) -> UploadResult:
     """
-    Endpoint genérico de carga. El path determina qué módulo procesa el archivo.
+    Endpoint genérico de carga. El path determina qué handler procesa el archivo.
 
     Ejemplos:
-      POST /uploads/socios_negocio/datos_maestros
+      POST /uploads/socios_negocio/datos_maestros/activar_desactivar
       POST /uploads/compras/orden_compra
       POST /uploads/ventas/nota_venta
     """

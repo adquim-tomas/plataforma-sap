@@ -37,10 +37,18 @@ export function ModulePlaceholderPage() {
     ["frontend.path", module.path],
     [
       "api.endpoint",
-      <span>
-        <span className="text-muted-foreground">POST </span>
-        <span>/api/v1/uploads/{module.apiPath}</span>
-      </span>,
+      module.apiPath ? (
+        <span>
+          <span className="text-muted-foreground">POST </span>
+          <span>/api/v1/uploads/{module.apiPath}</span>
+        </span>
+      ) : module.actions ? (
+        <span className="text-muted-foreground">
+          {module.actions.length} acción(es) · ver página del módulo
+        </span>
+      ) : (
+        <span className="text-muted-foreground">—</span>
+      ),
     ],
     [
       "backend.handler",

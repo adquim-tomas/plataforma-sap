@@ -11,7 +11,7 @@ export function GestionClientesPage() {
   const navigate = useNavigate()
   const module = findModuleByPath(PATH)
 
-  if (!module) return null
+  if (!module || !module.apiPath) return null
 
   return (
     <div className="flex flex-col gap-8">

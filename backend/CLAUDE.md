@@ -48,14 +48,29 @@ parse Excel → validate Pydantic → insert SAP → save BD
 
 ### Estructura por Módulo
 
-Cada módulo en `app/modules/{nombre}/` sigue esta estructura:
+Hay dos modelos de organización por módulo. Los módulos nuevos o ya migrados al modelo "una acción = un endpoint" se parten por acción; los legacy todavía exponen un único endpoint genérico por módulo.
+
+**Modelo por acciones (preferido)** — `app/modules/{categoria}/{modulo}/{accion}/`:
 
 ```
-schema.py       # Pydantic models (extiende RowBase / DocumentLineBase)
-validator.py    # Validaciones de negocio específicas
-sap_service.py  # Llamadas a SAP Service Layer
-router.py       # FastAPI router → registrado en /api/v1/uploads/{module_path}
+{accion}/schema.py       # Pydantic con allowlist mínimo, exclusivo de la acción
+{accion}/validator.py    # Validaciones de negocio específicas de la acción
+{accion}/sap_service.py  # Llamada SAP que la acción ejecuta
+{accion}/router.py       # Handler → registrado en /uploads/{cat}/{modulo}/{accion}
 ```
+
+Cada acción es su propio endpoint para que el operador no pueda mandar campos fuera del allowlist (el schema rechaza `extra`). Ej: `socios_negocio/datos_maestros/activar_desactivar` solo acepta `CardCode`, `Valid`, `Frozen`.
+
+**Modelo legacy (un endpoint por módulo)** — `app/modules/{categoria}/{modulo}/`:
+
+```
+schema.py       # Pydantic
+validator.py
+sap_service.py
+router.py       # registrado en /uploads/{cat}/{modulo}
+```
+
+Aplica todavía a `gestion_clientes`, `log_precios`, `orden_compra`. Se irán migrando al modelo por acciones a medida que aparezcan acciones distintas que justifiquen partirlo.
 
 ---
 
@@ -96,11 +111,21 @@ router.py       # FastAPI router → registrado en /api/v1/uploads/{module_path}
 - **Proveedores (`cSupplier`):** `PN` + RUT → `PN12345678-9`
 
 ### Datos Maestros Socios de Negocio
-- **Solo PATCH** — nunca creación (POST).
-- Campos de dirección (`AddressName`, `Street`, `City`, `County`, `State`):
-  - Todos opcionales individualmente.
-  - Si se edita cualquier campo de dirección → **todos requeridos en conjunto**.
-  - `AddressName` lo provee el usuario en el Excel.
+
+Módulo particionado en acciones. Cada acción es un endpoint separado con su propio allowlist.
+
+**Acciones implementadas:**
+
+| Acción               | Endpoint                                              | Campos permitidos                |
+|----------------------|-------------------------------------------------------|----------------------------------|
+| Activar / Desactivar | `socios_negocio/datos_maestros/activar_desactivar`    | `CardCode`, `Valid`, `Frozen`    |
+
+#### `activar_desactivar`
+
+- **PATCH** `/BusinessPartners('{CardCode}')` con `{Valid, Frozen}`.
+- El operador completa **uno solo** de `Valid` / `Frozen` con `tYES` o `tNO` — el opuesto se infiere y se incluye en el PATCH (SAP requiere ambos para que el cambio de estado tome efecto).
+- Schema con `extra="forbid"`: cualquier columna fuera de `CardCode`, `Valid`, `Frozen` se rechaza por Pydantic.
+- Validador: `card_code_exists` (no se activan/desactivan socios inexistentes).
 
 ### Gestión de Clientes (NX_GCLIENTE)
 
@@ -154,7 +179,7 @@ Los módulos UDO (Datos Maestros, Gestión de Clientes, Log de Precios) usan **P
 | BaseUploadHandler | ✅ | |
 | RowBase + DocumentLineBase | ✅ | shared schemas |
 | SAPValidator.card_code_exists | ✅ | shared validator |
-| **Datos Maestros SN** | ✅ | PATCH only |
+| **Datos Maestros SN — Activar/Desactivar** | ✅ | Acción piloto del modelo "una acción = un endpoint". PATCH `BusinessPartners` con `Valid`+`Frozen` (uno provisto, opuesto inferido) |
 | **Log de Precios** | ✅ | PATCH NX_LOGPRECIOS — append-only de líneas; IVA y LineTotal calculados server-side |
 | **Gestión de Clientes** | ✅ | PATCH NX_GCLIENTE — actualiza líneas existentes por LineId |
 | **Cotización de Compras** | ⬜ | |

@@ -1,27 +1,33 @@
+import { useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
 
 import { Label } from "@/components/atoms/Label"
 import { Button } from "@/components/ui/button"
 import { UploadPanel } from "@/components/uploads/UploadPanel"
 import { findModuleByPath } from "@/lib/routes"
+import { cn } from "@/lib/utils"
 
 const PATH = "/uploads/datos-maestros"
 
 export function DatosMaestrosPage() {
   const navigate = useNavigate()
-  const module = findModuleByPath(PATH)
+  const module = useMemo(() => findModuleByPath(PATH), [])
+  const actions = module?.actions ?? []
+  const [actionId, setActionId] = useState(actions[0]?.id)
 
-  if (!module) return null
+  if (!module || actions.length === 0) return null
+
+  const selected = actions.find((a) => a.id === actionId) ?? actions[0]
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-6">
       {/* Header */}
       <div className="flex items-baseline justify-between border-b border-border-strong pb-3">
         <div>
           <Label>socios de negocio</Label>
           <h1 className="mt-1 text-lg font-medium">Datos maestros</h1>
           <p className="mt-1 text-[0.82rem] text-muted-foreground">
-            Actualiza información de clientes y proveedores que ya existen en SAP.
+            Acciones masivas sobre socios de negocio que ya existen en SAP. Elegí qué querés hacer y subí el Excel.
           </p>
         </div>
         <Button
@@ -33,11 +39,49 @@ export function DatosMaestrosPage() {
         </Button>
       </div>
 
-      {/* Upload — la acción principal, prominente */}
+      {/* Selector de acción */}
+      <section>
+        <Label>acción</Label>
+        <div
+          role="tablist"
+          className="mt-2 flex flex-wrap items-stretch border border-border bg-elev"
+        >
+          {actions.map((a, i) => {
+            const active = a.id === selected.id
+            return (
+              <button
+                key={a.id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => setActionId(a.id)}
+                className={cn(
+                  "px-3 py-2 text-[0.82rem] transition-colors",
+                  "border-r border-border last:border-r-0",
+                  active
+                    ? "bg-surface text-foreground border-b-2 border-b-primary -mb-px"
+                    : "text-muted-foreground hover:bg-surface hover:text-foreground",
+                )}
+              >
+                <span className="mr-2 text-[0.68rem] tabular-nums text-muted-foreground">
+                  {String(i + 1).padStart(2, "0")}
+                </span>
+                {a.title}
+              </button>
+            )
+          })}
+        </div>
+      </section>
+
+      {/* Upload de la acción seleccionada */}
       <section>
         <Label>subir archivo</Label>
         <div className="mt-2">
-          <UploadPanel apiPath={module.apiPath} schema={module.schema} />
+          <UploadPanel
+            key={selected.id}
+            apiPath={selected.apiPath}
+            schema={selected.schema}
+          />
         </div>
       </section>
     </div>

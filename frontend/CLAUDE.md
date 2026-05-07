@@ -141,7 +141,16 @@ Configuración en [`src/router.tsx`](src/router.tsx) usando `createBrowserRouter
 | `/uploads/:slug` | `AppShell` → `ModulePlaceholderPage` (fallback) | requerida |
 | `*` | `NotFoundPage` | público |
 
-Slugs y `apiPath` son la fuente única en [`src/lib/routes.ts`](src/lib/routes.ts) (registro `MODULES`).
+Slugs y endpoints son la fuente única en [`src/lib/routes.ts`](src/lib/routes.ts) (registro `MODULES`).
+
+### Modelo de un módulo
+
+Cada `ModuleEntry` expone uno de dos modelos:
+
+- **Particionado en acciones** (`actions: ModuleAction[]`): el módulo no tiene un endpoint propio; cada acción tiene su `apiPath` y `schema` específicos. La página del módulo muestra un selector de acción y solo permite subir Excel para la acción elegida — el operador no puede mandar campos fuera del allowlist de la acción seleccionada. **Modelo preferido.**
+- **Endpoint directo** (`apiPath` + `schema?`): el módulo tiene un único endpoint genérico. Modelo legacy que se está migrando hacia el de acciones cuando aparecen acciones distintas que justifiquen partirlo.
+
+Datos Maestros está particionado (acción piloto: `activar-desactivar`). Gestión de Clientes, Log de Precios y Orden de Compra siguen con endpoint directo por ahora.
 
 | Roman | Slug | API path | Backend |
 |-------|------|----------|---------|
@@ -201,7 +210,7 @@ Slugs y `apiPath` son la fuente única en [`src/lib/routes.ts`](src/lib/routes.t
 | GET batches / audit | ⬜ | LAST RUN queda en `—` hasta que backend exponga |
 | UploadDropzone / UploadPreview / UploadSummary / ErrorReport / UploadPanel (shared) | ✅ | en `src/components/uploads/` — reutilizables por todos los módulos |
 | Preview pre-subida (parsing cliente + chequeo de columnas obligatorias + confirmación) | ✅ | `previewExcel()` en `lib/excel.ts` (read-excel-file). `ModuleSchema` por módulo en `lib/routes.ts` define `requiredColumns` |
-| **Datos Maestros SN** UI | ✅ | spec + schema esperado + reglas + UploadPanel |
+| **Datos Maestros SN** UI | ✅ | Página con selector de acción (tabs) + UploadPanel por acción. Acción piloto: **Activar / Desactivar** (`CardCode` + `Valid` o `Frozen`) |
 | **Log de Precios** UI | ⬜ | |
 | **Gestión de Clientes** UI | ✅ | UploadPanel + schema (`Code`, `LineId` requeridos; allowlist de campos U_* opcionales) |
 | **Cotización de Compras** UI | ⬜ | |
