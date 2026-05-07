@@ -1,18 +1,18 @@
 from app.core.sap_client import SAPClient
 from app.modules.shared.base_validator import SAPValidator
-from app.modules.socios_negocio.gestion_clientes.schema import GestionClientesRow
+from app.modules.socios_negocio.gestion_clientes.actualizar_linea.schema import (
+    ActualizarLineaRow,
+)
 
 
-class GestionClientesValidator:
+class ActualizarLineaValidator:
     """
-    Validaciones de negocio para Gestión de Clientes (NX_GCLIENTE) que
-    requieren consultar SAP. Se ejecutan después de la validación Pydantic.
-
-    Retorna lista de errores (strings); lista vacía = fila válida para insertar.
+    Validaciones de negocio (consultan SAP) para la acción Actualizar línea
+    de NX_GCLIENTE. Se ejecutan después de la validación Pydantic.
     """
 
     @staticmethod
-    async def validate(sap: SAPClient, row: GestionClientesRow) -> list[str]:
+    async def validate(sap: SAPClient, row: ActualizarLineaRow) -> list[str]:
         errors: list[str] = []
 
         # 1. Header NX_GCLIENTE debe existir.

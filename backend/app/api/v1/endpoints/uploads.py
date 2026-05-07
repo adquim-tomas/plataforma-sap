@@ -10,28 +10,32 @@ from app.modules.shared.base_router import UploadResult
 from app.modules.shared.base_schema import InvalidFileError, ModuleNotFoundError
 from app.schemas.auth import TokenPayload
 
-# Importar handlers de cada módulo — se agregan a medida que se implementan
-from app.modules.compras.orden_compra.router import OrdenCompraHandler
+# Importar handlers — uno por acción concreta de cada módulo.
+from app.modules.compras.orden_compra.crear_servicio.router import (
+    CrearServicioHandler,
+)
 from app.modules.socios_negocio.datos_maestros.activar_desactivar.router import (
     ActivarDesactivarHandler,
 )
-from app.modules.socios_negocio.gestion_clientes.router import GestionClientesHandler
-from app.modules.socios_negocio.log_precios.router import LogPreciosHandler
+from app.modules.socios_negocio.gestion_clientes.actualizar_linea.router import (
+    ActualizarLineaHandler,
+)
+from app.modules.socios_negocio.log_precios.agregar_precio.router import (
+    AgregarPrecioHandler,
+)
 
 router = APIRouter(prefix="/uploads", tags=["uploads"])
 logger = logging.getLogger(__name__)
 
 # Registro de handlers — cada clave es un endpoint específico de carga.
-# Los módulos migrados al modelo "una acción = un endpoint" expanden la clave
-# con el sufijo `/<accion>`. Los todavía sin migrar exponen el handler directo
-# del módulo (estructura legacy, pendiente de partir en acciones).
+# Convención: `{categoria}/{modulo}/{accion}`. Cada acción expone únicamente
+# los campos relevantes a esa operación; el operador no puede mandar columnas
+# fuera del allowlist de la acción seleccionada.
 HANDLERS = {
-    # socios_negocio/datos_maestros: ahora particionado por acción
     "socios_negocio/datos_maestros/activar_desactivar": ActivarDesactivarHandler(),
-    # módulos sin migrar al modelo de acciones
-    "socios_negocio/gestion_clientes": GestionClientesHandler(),
-    "socios_negocio/log_precios":      LogPreciosHandler(),
-    "compras/orden_compra":            OrdenCompraHandler(),
+    "socios_negocio/gestion_clientes/actualizar_linea": ActualizarLineaHandler(),
+    "socios_negocio/log_precios/agregar_precio":        AgregarPrecioHandler(),
+    "compras/orden_compra/crear_servicio":              CrearServicioHandler(),
 }
 
 
@@ -43,17 +47,17 @@ async def upload_file(
     db: Session = Depends(get_db),
 ) -> UploadResult:
     """
-    Endpoint genérico de carga. El path determina qué handler procesa el archivo.
+    Endpoint genérico de carga. El path determina qué acción procesa el archivo.
 
     Ejemplos:
       POST /uploads/socios_negocio/datos_maestros/activar_desactivar
-      POST /uploads/compras/orden_compra
-      POST /uploads/ventas/nota_venta
+      POST /uploads/socios_negocio/gestion_clientes/actualizar_linea
+      POST /uploads/compras/orden_compra/crear_servicio
     """
     handler = HANDLERS.get(module_path)
     if not handler:
         raise ModuleNotFoundError(
-            f"Módulo '{module_path}' no existe o no está habilitado.",
+            f"Acción '{module_path}' no existe o no está habilitada.",
         )
 
     if not file.filename or not file.filename.endswith((".xlsx", ".xls")):

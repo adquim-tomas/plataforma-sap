@@ -1,17 +1,17 @@
 from app.core.sap_client import SAPClient
-from app.modules.socios_negocio.gestion_clientes.schema import (
+from app.modules.socios_negocio.gestion_clientes.actualizar_linea.schema import (
     LINE_FIELDS,
-    GestionClientesRow,
+    ActualizarLineaRow,
 )
 
 
-class GestionClientesSAPService:
+class ActualizarLineaSAPService:
 
     @staticmethod
-    async def update(sap: SAPClient, row: GestionClientesRow) -> None:
+    async def update(sap: SAPClient, row: ActualizarLineaRow) -> None:
         """
         PATCH sobre NX_GCLIENTE('{Code}') actualizando una línea existente
-        de la colección NX_DETCLIENTECollection identificada por LineId.
+        de NX_DETCLIENTECollection identificada por LineId.
 
         SAP B1 hace upsert por LineId dentro del collection sin pisar otras
         líneas — basta enviar la línea con los campos a modificar.

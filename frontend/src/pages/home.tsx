@@ -212,7 +212,7 @@ function ModuleRow({ module: m, index }: { module: ModuleEntry; index: number })
         {m.title.toLowerCase()}
       </Cell>
       <Cell className="hidden text-[0.74rem] text-muted-foreground md:flex">
-        {m.apiPath ?? (m.actions ? `${m.actions.length} acciones` : "—")}
+        {m.actions?.length ? `${m.actions.length} acciones` : "—"}
       </Cell>
       <Cell>
         <StatusPill kind={m.implemented ? "ok" : "pending"} />

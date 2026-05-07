@@ -31,12 +31,12 @@ _META_FIELDS: frozenset[str] = frozenset({"Code"})
 _ALL_ALLOWED: frozenset[str] = LINE_FIELDS | _META_FIELDS
 
 
-class LogPreciosRow(RowBase):
+class AgregarPrecioRow(RowBase):
     """
-    Schema de una fila del Excel para Log de Precios (NX_LOGPRECIOS).
+    Acción: agregar un precio histórico nuevo a NX_LOGPRECIOS.
 
-    Cada fila agrega una nueva línea al collection NX_LOGDETALLECollection
-    del header NX_LOGPRECIOS('{Code}'). El log es append-only.
+    Cada fila se agrega como nueva línea a NX_LOGDETALLECollection del header
+    NX_LOGPRECIOS('{Code}'). El log es append-only.
 
     Obligatorios: Code, U_NX_Fecha, U_NX_Neto.
     `U_NX_IVA` y `U_NX_LineTotal` se calculan en el servicio (no aceptarlos del Excel).
@@ -64,7 +64,7 @@ class LogPreciosRow(RowBase):
         }
 
     @model_validator(mode="after")
-    def coercionar_y_validar_numericos(self) -> "LogPreciosRow":
+    def coercionar_y_validar_numericos(self) -> "AgregarPrecioRow":
         """
         Convierte a float los campos numéricos opcionales (vienen como string
         desde pd.read_excel(dtype=str)). Lanza error legible si no parsean.
@@ -89,7 +89,7 @@ class LogPreciosRow(RowBase):
         return self
 
     @model_validator(mode="after")
-    def validar_campos_extra(self) -> "LogPreciosRow":
+    def validar_campos_extra(self) -> "AgregarPrecioRow":
         """
         Rechaza columnas no permitidas. Da mensaje específico para los
         campos calculados (IVA, LineTotal) que confunden a usuarios.

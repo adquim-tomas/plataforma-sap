@@ -1,18 +1,18 @@
 from app.core.sap_client import SAPClient
 from app.modules.shared.base_validator import SAPValidator
-from app.modules.socios_negocio.log_precios.schema import LogPreciosRow
+from app.modules.socios_negocio.log_precios.agregar_precio.schema import (
+    AgregarPrecioRow,
+)
 
 
-class LogPreciosValidator:
+class AgregarPrecioValidator:
     """
-    Validaciones de negocio para Log de Precios (NX_LOGPRECIOS) que
-    requieren consultar SAP. Se ejecutan después de la validación Pydantic.
-
-    Retorna lista de errores; lista vacía = fila válida para insertar.
+    Validaciones de negocio (consultan SAP) para la acción Agregar precio
+    a NX_LOGPRECIOS. Se ejecutan después de la validación Pydantic.
     """
 
     @staticmethod
-    async def validate(sap: SAPClient, row: LogPreciosRow) -> list[str]:
+    async def validate(sap: SAPClient, row: AgregarPrecioRow) -> list[str]:
         errors: list[str] = []
 
         header_exists = await SAPValidator.nx_logprecios_exists(sap, row.Code)

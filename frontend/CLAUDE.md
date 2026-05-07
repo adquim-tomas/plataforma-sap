@@ -138,30 +138,28 @@ Configuración en [`src/router.tsx`](src/router.tsx) usando `createBrowserRouter
 | `/auth/login` | `LoginPage` | público |
 | `/` | `AppShell` → `HomePage` | requerida |
 | `/uploads/datos-maestros` | `AppShell` → `DatosMaestrosPage` | requerida |
+| `/uploads/gestion-clientes` | `AppShell` → `GestionClientesPage` | requerida |
 | `/uploads/:slug` | `AppShell` → `ModulePlaceholderPage` (fallback) | requerida |
 | `*` | `NotFoundPage` | público |
 
-Slugs y endpoints son la fuente única en [`src/lib/routes.ts`](src/lib/routes.ts) (registro `MODULES`).
+Slugs y acciones son la fuente única en [`src/lib/routes.ts`](src/lib/routes.ts) (registro `MODULES`).
 
 ### Modelo de un módulo
 
-Cada `ModuleEntry` expone uno de dos modelos:
+Cada `ModuleEntry` se particiona en **acciones** (`actions: ModuleAction[]`). El módulo no tiene un endpoint propio: cada acción tiene su `apiPath` y `schema` específicos. La página del módulo muestra un selector de acción (tabs) y solo permite subir Excel para la acción elegida — el operador no puede mandar campos fuera del allowlist de la acción seleccionada.
 
-- **Particionado en acciones** (`actions: ModuleAction[]`): el módulo no tiene un endpoint propio; cada acción tiene su `apiPath` y `schema` específicos. La página del módulo muestra un selector de acción y solo permite subir Excel para la acción elegida — el operador no puede mandar campos fuera del allowlist de la acción seleccionada. **Modelo preferido.**
-- **Endpoint directo** (`apiPath` + `schema?`): el módulo tiene un único endpoint genérico. Modelo legacy que se está migrando hacia el de acciones cuando aparecen acciones distintas que justifiquen partirlo.
+Para módulos no implementados (`implemented: false`), `actions` es `undefined` o vacío y la ruta cae al `ModulePlaceholderPage`. Cuando se implemente el módulo se agregan las acciones al registro y se construye la página propia siguiendo el patrón de `DatosMaestrosPage`/`GestionClientesPage`.
 
-Datos Maestros está particionado (acción piloto: `activar-desactivar`). Gestión de Clientes, Log de Precios y Orden de Compra siguen con endpoint directo por ahora.
-
-| Roman | Slug | API path | Backend |
-|-------|------|----------|---------|
-| I | `datos-maestros` | `socios_negocio/datos_maestros` | ✅ |
-| II | `gestion-clientes` | `socios_negocio/gestion_clientes` | ✅ |
-| III | `log-precios` | `socios_negocio/log_precios` | ✅ |
-| IV | `cotizacion` | `compras/cotizacion` | ⬜ |
-| V | `orden-compra` | `compras/orden_compra` | ✅ |
-| VI | `factura-proveedor` | `compras/factura_proveedor` | ⬜ |
-| VII | `nota-venta` | `ventas/nota_venta` | ⬜ |
-| VIII | `entrega` | `ventas/entrega` | ⬜ |
+| Roman | Slug | Acciones implementadas | Backend |
+|-------|------|------------------------|---------|
+| I | `datos-maestros` | `activar-desactivar` | ✅ |
+| II | `gestion-clientes` | `actualizar-linea` | ✅ |
+| III | `log-precios` | `agregar-precio` | ✅ |
+| IV | `cotizacion` | — | ⬜ |
+| V | `orden-compra` | `crear-servicio` | ✅ |
+| VI | `factura-proveedor` | — | ⬜ |
+| VII | `nota-venta` | — | ⬜ |
+| VIII | `entrega` | — | ⬜ |
 
 ---
 
@@ -210,13 +208,13 @@ Datos Maestros está particionado (acción piloto: `activar-desactivar`). Gesti�
 | GET batches / audit | ⬜ | LAST RUN queda en `—` hasta que backend exponga |
 | UploadDropzone / UploadPreview / UploadSummary / ErrorReport / UploadPanel (shared) | ✅ | en `src/components/uploads/` — reutilizables por todos los módulos |
 | Preview pre-subida (parsing cliente + chequeo de columnas obligatorias + confirmación) | ✅ | `previewExcel()` en `lib/excel.ts` (read-excel-file). `ModuleSchema` por módulo en `lib/routes.ts` define `requiredColumns` |
-| **Datos Maestros SN** UI | ✅ | Página con selector de acción (tabs) + UploadPanel por acción. Acción piloto: **Activar / Desactivar** (`CardCode` + `Valid` o `Frozen`) |
-| **Log de Precios** UI | ⬜ | |
-| **Gestión de Clientes** UI | ✅ | UploadPanel + schema (`Code`, `LineId` requeridos; allowlist de campos U_* opcionales) |
-| **Cotización de Compras** UI | ⬜ | |
-| **Orden de Compra** UI | ⬜ | |
-| **Factura de Proveedores** UI | ⬜ | |
-| **Nota de Venta** UI | ⬜ | |
+| **Datos Maestros** UI | ✅ | Página con selector de acción (tabs). Acción: **Activar / Desactivar** (`CardCode` + `Valid` o `Frozen`) |
+| **Gestión de Clientes** UI | ✅ | Página con selector de acción (tabs). Acción: **Actualizar datos comerciales** (`Code`, `LineId` + allowlist `U_*`) |
+| **Log de Precios** UI | ⬜ | Backend listo (acción `agregar-precio`); cae al `ModulePlaceholderPage` hasta construir su página |
+| **Orden de Compra** UI | ⬜ | Backend listo (acción `crear-servicio`); cae al `ModulePlaceholderPage` hasta construir su página |
+| **Cotización de Compras** UI | ⬜ | sin backend |
+| **Factura de Proveedores** UI | ⬜ | sin backend (bloqueado por repo de Pedro) |
+| **Nota de Venta** UI | ⬜ | sin backend |
 | **Entrega** UI | ⬜ | |
 | Audit Log page | ⬜ | |
 

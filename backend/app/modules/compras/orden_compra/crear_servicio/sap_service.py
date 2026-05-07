@@ -1,11 +1,11 @@
 from app.core.sap_client import SAPClient
-from app.modules.compras.orden_compra.schema import OrdenCompraServicioRow
+from app.modules.compras.orden_compra.crear_servicio.schema import CrearServicioRow
 
 
-class OrdenCompraSAPService:
+class CrearServicioSAPService:
 
     @staticmethod
-    async def create(sap: SAPClient, row: OrdenCompraServicioRow) -> None:
+    async def create(sap: SAPClient, row: CrearServicioRow) -> None:
         """
         POST a `/PurchaseOrders` con DocType=dDocument_Service.
 

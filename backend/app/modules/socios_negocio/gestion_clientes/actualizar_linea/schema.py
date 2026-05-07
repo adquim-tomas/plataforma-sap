@@ -28,15 +28,15 @@ _META_FIELDS: frozenset[str] = frozenset({"Code", "LineId"})
 _ALL_ALLOWED: frozenset[str] = LINE_FIELDS | _META_FIELDS
 
 
-class GestionClientesRow(RowBase):
+class ActualizarLineaRow(RowBase):
     """
-    Schema de una fila del Excel para Gestión de Clientes (NX_GCLIENTE).
+    Acción: actualizar una línea existente del cliente en NX_GCLIENTE.
 
-    Cada fila actualiza una línea existente (LineId) dentro de la colección
-    NX_DETCLIENTECollection del header NX_GCLIENTE('{Code}').
+    Cada fila apunta a una línea (LineId) dentro de NX_DETCLIENTECollection
+    del header NX_GCLIENTE('{Code}'). Solo se actualizan líneas existentes
+    — no crea ni borra.
 
-    Obligatorios: Code, LineId.
-    El resto de campos son opcionales — solo se envían los que tengan valor.
+    Obligatorios: Code, LineId. El resto, opcionales.
     """
     model_config = ConfigDict(
         extra="allow",
@@ -62,7 +62,7 @@ class GestionClientesRow(RowBase):
     # ── Validators de modelo ──────────────────────────────────────────────────
 
     @model_validator(mode="after")
-    def coercionar_y_validar_numericos(self) -> "GestionClientesRow":
+    def coercionar_y_validar_numericos(self) -> "ActualizarLineaRow":
         """
         Los campos numéricos vienen como string (pd.read_excel(dtype=str)).
         Se convierten a float; si no son parseables, error legible.
@@ -94,7 +94,7 @@ class GestionClientesRow(RowBase):
         return self
 
     @model_validator(mode="after")
-    def validar_campos_extra(self) -> "GestionClientesRow":
+    def validar_campos_extra(self) -> "ActualizarLineaRow":
         """Rechaza columnas del Excel que no estén en el allowlist."""
         unknown = set((self.model_extra or {}).keys()) - _ALL_ALLOWED
         if unknown:
@@ -105,7 +105,7 @@ class GestionClientesRow(RowBase):
         return self
 
     @model_validator(mode="after")
-    def validar_al_menos_un_campo(self) -> "GestionClientesRow":
+    def validar_al_menos_un_campo(self) -> "ActualizarLineaRow":
         """Si solo se envían Code y LineId no hay nada que actualizar."""
         extra = self.model_extra or {}
         if not any(v is not None for v in extra.values()):

@@ -65,7 +65,16 @@ El usuario sube un Excel; las filas válidas se insertan en SAP y las inválidas
 
 ## Modelo de acciones
 
-Los módulos se particionan en **acciones discretas**: cada acción es un endpoint con su propio allowlist de campos. El operador elige primero qué acción ejecutar (en la UI hay un selector dentro de la página del módulo), y solo los campos relevantes a esa acción son aceptados — el backend rechaza columnas fuera del allowlist por Pydantic. La migración hacia este modelo es gradual; los módulos sin acciones definidas siguen funcionando con un endpoint genérico hasta que se particionen. Detalle del modelo en [`backend/CLAUDE.md`](backend/CLAUDE.md) y [`frontend/CLAUDE.md`](frontend/CLAUDE.md).
+Cada módulo se particiona en **acciones discretas**: cada acción es un endpoint con su propio allowlist de campos. El operador elige primero qué acción ejecutar (selector dentro de la página del módulo), y solo los campos relevantes a esa acción son aceptados — el backend rechaza columnas fuera del allowlist por Pydantic. No hay endpoint "genérico" en ningún módulo: si una operación no está expuesta como acción, no es ejecutable. Cada acción se registra como `{categoria}/{modulo}/{accion}` en el `HANDLERS` del backend. Detalle del modelo en [`backend/CLAUDE.md`](backend/CLAUDE.md) y [`frontend/CLAUDE.md`](frontend/CLAUDE.md).
+
+**Acciones implementadas hoy:**
+
+| Módulo | Acción |
+|--------|--------|
+| Datos Maestros | Activar / Desactivar |
+| Gestión de Clientes | Actualizar línea |
+| Log de Precios | Agregar precio |
+| Orden de Compra | Crear OC servicio |
 
 ---
 

@@ -36,15 +36,10 @@ export function ModulePlaceholderPage() {
     ["category", CATEGORY_LABEL[module.category].toLowerCase()],
     ["frontend.path", module.path],
     [
-      "api.endpoint",
-      module.apiPath ? (
-        <span>
-          <span className="text-muted-foreground">POST </span>
-          <span>/api/v1/uploads/{module.apiPath}</span>
-        </span>
-      ) : module.actions ? (
+      "actions",
+      module.actions?.length ? (
         <span className="text-muted-foreground">
-          {module.actions.length} acción(es) · ver página del módulo
+          {module.actions.length} · ver página del módulo
         </span>
       ) : (
         <span className="text-muted-foreground">—</span>

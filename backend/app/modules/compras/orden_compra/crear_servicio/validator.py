@@ -1,18 +1,16 @@
 from app.core.sap_client import SAPClient
-from app.modules.compras.orden_compra.schema import OrdenCompraServicioRow
+from app.modules.compras.orden_compra.crear_servicio.schema import CrearServicioRow
 from app.modules.shared.base_validator import SAPValidator
 
 
-class OrdenCompraValidator:
+class CrearServicioValidator:
     """
-    Validaciones de negocio para Orden de Compra (servicio) que requieren
-    consultar SAP. Se ejecutan después de la validación Pydantic.
-
-    Retorna lista de errores; lista vacía = fila válida para crear la OC.
+    Validaciones de negocio (consultan SAP) para la acción Crear OC servicio.
+    Se ejecutan después de la validación Pydantic.
     """
 
     @staticmethod
-    async def validate(sap: SAPClient, row: OrdenCompraServicioRow) -> list[str]:
+    async def validate(sap: SAPClient, row: CrearServicioRow) -> list[str]:
         errors: list[str] = []
 
         if not await SAPValidator.card_code_exists(sap, row.CardCode):

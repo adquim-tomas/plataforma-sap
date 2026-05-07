@@ -48,29 +48,19 @@ parse Excel → validate Pydantic → insert SAP → save BD
 
 ### Estructura por Módulo
 
-Hay dos modelos de organización por módulo. Los módulos nuevos o ya migrados al modelo "una acción = un endpoint" se parten por acción; los legacy todavía exponen un único endpoint genérico por módulo.
-
-**Modelo por acciones (preferido)** — `app/modules/{categoria}/{modulo}/{accion}/`:
+Cada módulo se organiza por **acciones**. Una acción es un endpoint discreto con su propio allowlist de campos: el operador no puede mandar columnas fuera de las que esa acción específica acepta. La estructura es la misma para todo el repo:
 
 ```
-{accion}/schema.py       # Pydantic con allowlist mínimo, exclusivo de la acción
-{accion}/validator.py    # Validaciones de negocio específicas de la acción
-{accion}/sap_service.py  # Llamada SAP que la acción ejecuta
-{accion}/router.py       # Handler → registrado en /uploads/{cat}/{modulo}/{accion}
+app/modules/{categoria}/{modulo}/{accion}/
+  schema.py       # Pydantic con allowlist exclusivo de la acción
+  validator.py    # Validaciones de negocio específicas (consultan SAP)
+  sap_service.py  # Llamada SAP que la acción ejecuta
+  router.py       # Handler → registrado en /uploads/{cat}/{modulo}/{accion}
 ```
 
-Cada acción es su propio endpoint para que el operador no pueda mandar campos fuera del allowlist (el schema rechaza `extra`). Ej: `socios_negocio/datos_maestros/activar_desactivar` solo acepta `CardCode`, `Valid`, `Frozen`.
+Ejemplo: `socios_negocio/datos_maestros/activar_desactivar/` solo acepta `CardCode`, `Valid`, `Frozen` — cualquier otra columna del Excel se rechaza por Pydantic. Para agregar una segunda acción al mismo módulo, se crea otra subcarpeta hermana (`socios_negocio/datos_maestros/cambio_cartera/`, etc.) y se registra como handler aparte en `HANDLERS`.
 
-**Modelo legacy (un endpoint por módulo)** — `app/modules/{categoria}/{modulo}/`:
-
-```
-schema.py       # Pydantic
-validator.py
-sap_service.py
-router.py       # registrado en /uploads/{cat}/{modulo}
-```
-
-Aplica todavía a `gestion_clientes`, `log_precios`, `orden_compra`. Se irán migrando al modelo por acciones a medida que aparezcan acciones distintas que justifiquen partirlo.
+Los módulos sin implementar (Cotización de Compras, Factura de Proveedores, Nota de Venta, Entrega) **no tienen scaffolding** — sus carpetas no existen. Se crean directo bajo este modelo cuando se implementen.
 
 ---
 
@@ -110,58 +100,52 @@ Aplica todavía a `gestion_clientes`, `log_precios`, `orden_compra`. Se irán mi
 - **Clientes (`cCustomer`):** `CN` + RUT → `CN12345678-9`
 - **Proveedores (`cSupplier`):** `PN` + RUT → `PN12345678-9`
 
-### Datos Maestros Socios de Negocio
+### Acciones implementadas
 
-Módulo particionado en acciones. Cada acción es un endpoint separado con su propio allowlist.
+Cada fila es un endpoint concreto. La columna "Schema" indica qué archivo del repo define el allowlist exacto.
 
-**Acciones implementadas:**
+| Módulo SAP | Acción | Endpoint | Operación SAP | Schema |
+|------------|--------|----------|---------------|--------|
+| Datos Maestros (BusinessPartners) | Activar / Desactivar | `socios_negocio/datos_maestros/activar_desactivar` | PATCH `BusinessPartners('{CardCode}')` con `Valid` + `Frozen` | `socios_negocio/datos_maestros/activar_desactivar/schema.py` |
+| Gestión de Clientes (NX_GCLIENTE) | Actualizar línea | `socios_negocio/gestion_clientes/actualizar_linea` | PATCH `NX_GCLIENTE('{Code}')` upsert por `LineId` en `NX_DETCLIENTECollection` | `socios_negocio/gestion_clientes/actualizar_linea/schema.py` |
+| Log de Precios (NX_LOGPRECIOS) | Agregar precio | `socios_negocio/log_precios/agregar_precio` | PATCH `NX_LOGPRECIOS('{Code}')` con línea nueva (append-only) | `socios_negocio/log_precios/agregar_precio/schema.py` |
+| Orden de Compra (PurchaseOrders) | Crear OC servicio | `compras/orden_compra/crear_servicio` | POST `PurchaseOrders` con `DocType="dDocument_Service"` | `compras/orden_compra/crear_servicio/schema.py` |
 
-| Acción               | Endpoint                                              | Campos permitidos                |
-|----------------------|-------------------------------------------------------|----------------------------------|
-| Activar / Desactivar | `socios_negocio/datos_maestros/activar_desactivar`    | `CardCode`, `Valid`, `Frozen`    |
+#### Datos Maestros — Activar / Desactivar
 
-#### `activar_desactivar`
+- Campos: `CardCode` (obligatorio) + **uno solo** de `Valid` / `Frozen` con `tYES` o `tNO`.
+- El opuesto se infiere y se incluye en el PATCH (SAP requiere ambos para que el cambio de estado tome efecto).
+- Schema con `extra="forbid"`: cualquier columna adicional es rechazada por Pydantic.
+- Validador SAP: `card_code_exists`.
 
-- **PATCH** `/BusinessPartners('{CardCode}')` con `{Valid, Frozen}`.
-- El operador completa **uno solo** de `Valid` / `Frozen` con `tYES` o `tNO` — el opuesto se infiere y se incluye en el PATCH (SAP requiere ambos para que el cambio de estado tome efecto).
-- Schema con `extra="forbid"`: cualquier columna fuera de `CardCode`, `Valid`, `Frozen` se rechaza por Pydantic.
-- Validador: `card_code_exists` (no se activan/desactivan socios inexistentes).
+#### Gestión de Clientes — Actualizar línea
 
-### Gestión de Clientes (NX_GCLIENTE)
-
-UDO con header (PK `Code` = CardCode del cliente) y colección de líneas
-`NX_DETCLIENTECollection` (PK `LineId` dentro del header).
-
-- **Solo PATCH** — actualiza líneas existentes; no crea nuevas líneas ni nuevos headers.
-- PATCH al header con `{"NX_DETCLIENTECollection": [{"Code": ..., "LineId": ..., <campos>}]}` upserta por `LineId` **sin pisar otras líneas** del collection.
-- Campos opcionales de la línea (allowlist en `schema.LINE_FIELDS`): `U_NX_Margen`, `U_LMM_Precio_Estimado`, `U_LMM_Precio_Estimado_Neto`, `U_LMM_FI_SPOT`, `U_LMM_NC`, `U_NX_Capacidad`, `U_NX_CodArt`, `U_LMM_DescArt`, `U_LMM_ESP`, `U_LMM_Sucural`, `U_LMM_Formato`.
+- Campos identificadores (obligatorios): `Code` (= CardCode del cliente, header), `LineId` (línea dentro de `NX_DETCLIENTECollection`).
+- Campos opcionales (allowlist `LINE_FIELDS`): `U_NX_Margen`, `U_LMM_Precio_Estimado`, `U_LMM_Precio_Estimado_Neto`, `U_LMM_FI_SPOT`, `U_LMM_NC`, `U_NX_Capacidad`, `U_NX_CodArt`, `U_LMM_DescArt`, `U_LMM_ESP`, `U_LMM_Sucural`, `U_LMM_Formato`.
 - `U_LMM_Sucural` (sin la 's' final) es **typo intencional en SAP** — no corregir.
 - `U_NX_Margen` debe ser decimal entre 0 y 1 (no porcentaje 0–100).
-- Validador SAP: `nx_gcliente_exists(code)` + `nx_gcliente_line_exists(code, line_id)`.
+- PATCH al header con `{"NX_DETCLIENTECollection": [{"Code": ..., "LineId": ..., <campos>}]}` upserta por `LineId` sin pisar otras líneas.
+- Validadores SAP: `nx_gcliente_exists(code)` + `nx_gcliente_line_exists(code, line_id)`.
 
-### Log de Precios (NX_LOGPRECIOS)
+#### Log de Precios — Agregar precio
 
-UDO con header (`Code` = PK) y colección `NX_LOGDETALLECollection`. Registro histórico de precios por artículo/sucursal — **append-only**.
-
-- **Solo PATCH con líneas sin `LineId`** → SAP B1 lo trata como nueva línea (append). No se editan líneas existentes ni se crean headers (POST queda fuera de scope).
-- **Campos calculados server-side** (rechazar si vienen en el Excel):
-  - `U_NX_IVA = Neto * 0.19`
-  - `U_NX_LineTotal = Neto + IVA + IE + FEPPIEV`
-- Campos del Excel (allowlist en `schema.LINE_FIELDS`): `U_NX_Fecha` (YYYY-MM-DD, obligatorio), `U_NX_Neto` (obligatorio), `U_NX_IE`, `U_NX_FEPPIEV`, `U_LMM_Esp`, `U_LMM_Esp_Flota`, `U_LMM_JLC_Real`, `U_LMM_Copec`.
+- Append-only: cada fila se agrega como línea nueva en `NX_LOGDETALLECollection` (PATCH sin `LineId` → SAP B1 lo trata como nueva línea).
+- Obligatorios: `Code` (header), `U_NX_Fecha` (YYYY-MM-DD), `U_NX_Neto`.
+- Opcionales: `U_NX_IE`, `U_NX_FEPPIEV`, `U_LMM_Esp`, `U_LMM_Esp_Flota`, `U_LMM_JLC_Real`, `U_LMM_Copec`.
+- Calculados server-side (rechazados si vienen en el Excel): `U_NX_IVA = Neto * 0.19`, `U_NX_LineTotal = Neto + IVA + IE + FEPPIEV`.
 - Validador SAP: `nx_logprecios_exists(code)`.
 
-### Orden de Compra (PurchaseOrders)
+#### Orden de Compra — Crear OC servicio
 
-Documento estándar de SAP B1. Esta iteración cubre **solo OC tipo Servicio** (`DocType="dDocument_Service"`) — sin items de inventario; la línea apunta a una cuenta contable.
-
+- Documento estándar SAP. Solo cubre OC tipo Servicio (`DocType="dDocument_Service"`) — sin items de inventario; la línea apunta a una cuenta contable.
 - **POST** a `/PurchaseOrders` (no PATCH — es un documento nuevo).
-- **1 fila Excel = 1 OC con 1 línea**. Multi-línea queda como follow-up.
-- Cabecera obligatoria: `CardCode` (proveedor), `SalesPersonCode` (encargado), `Comments`.
-- Línea obligatoria: `AccountCode` (cuenta contable), `LineTotal` (> 0).
+- 1 fila Excel = 1 OC con 1 línea. Multi-línea queda como follow-up.
+- Cabecera obligatoria: `CardCode` (proveedor), `SalesPersonCode`, `Comments`.
+- Línea obligatoria: `AccountCode`, `LineTotal` (> 0).
 - `Comments` se usa también como `ItemDescription` de la línea (mismo patrón que el legacy del colega).
-- Campos opcionales: `CostingCode`, `CostingCode2` (dimensiones contables — SAP los rechaza si son inválidos), `BPL_IDAssignedToInvoice` (sucursal — solo en SAP DBs multi-branch).
-- Schema usa `extra="forbid"` (no allowlist abierto): columnas desconocidas se rechazan directo por Pydantic.
-- Validaciones SAP: `card_code_exists` + `sales_person_exists` + `account_code_exists` (todos ya existían en `SAPValidator`).
+- Opcionales: `CostingCode`, `CostingCode2` (dimensiones contables), `BPL_IDAssignedToInvoice` (sucursal — solo en SAP DBs multi-branch).
+- Schema usa `extra="forbid"`.
+- Validadores SAP: `card_code_exists` + `sales_person_exists` + `account_code_exists`.
 
 ### Documentos SAP estándar — POST vs PATCH
 
@@ -179,20 +163,21 @@ Los módulos UDO (Datos Maestros, Gestión de Clientes, Log de Precios) usan **P
 | BaseUploadHandler | ✅ | |
 | RowBase + DocumentLineBase | ✅ | shared schemas |
 | SAPValidator.card_code_exists | ✅ | shared validator |
-| **Datos Maestros SN — Activar/Desactivar** | ✅ | Acción piloto del modelo "una acción = un endpoint". PATCH `BusinessPartners` con `Valid`+`Frozen` (uno provisto, opuesto inferido) |
-| **Log de Precios** | ✅ | PATCH NX_LOGPRECIOS — append-only de líneas; IVA y LineTotal calculados server-side |
-| **Gestión de Clientes** | ✅ | PATCH NX_GCLIENTE — actualiza líneas existentes por LineId |
-| **Cotización de Compras** | ⬜ | |
-| **Orden de Compra** | ✅ | POST PurchaseOrders tipo Servicio — 1 fila Excel = 1 OC con 1 línea contable |
-| **Factura de Proveedores** | ⬜ | |
-| **Nota de Venta** | ⬜ | |
-| **Entrega** | ⬜ | |
+| **Datos Maestros — Activar / Desactivar** | ✅ | PATCH `BusinessPartners` con `Valid`+`Frozen` (uno provisto, opuesto inferido) |
+| **Gestión de Clientes — Actualizar línea** | ✅ | PATCH `NX_GCLIENTE` upsert por `LineId` en `NX_DETCLIENTECollection` |
+| **Log de Precios — Agregar precio** | ✅ | PATCH `NX_LOGPRECIOS` append-only; IVA y LineTotal calculados server-side |
+| **Orden de Compra — Crear OC servicio** | ✅ | POST `PurchaseOrders` `dDocument_Service`, 1 fila = 1 OC con 1 línea contable |
+| Cotización de Compras | ⬜ | sin scaffolding — se crea bajo el modelo de acciones cuando se implemente |
+| Factura de Proveedores | ⬜ | bloqueado por repo de Pedro |
+| Nota de Venta | ⬜ | sin scaffolding |
+| Entrega | ⬜ | sin scaffolding |
 
 ---
 
 ## Convenciones
 
-- Al implementar un módulo nuevo, crear los 4 archivos (`schema`, `validator`, `sap_service`, `router`) y registrar el router en `app/main.py` bajo `/api/v1/uploads/`.
+- Cada **acción** vive en su propia subcarpeta `{categoria}/{modulo}/{accion}/` con los 4 archivos (`schema`, `validator`, `sap_service`, `router`) y se registra como una entrada en `HANDLERS` en [`app/api/v1/endpoints/uploads.py`](app/api/v1/endpoints/uploads.py) bajo la clave `{categoria}/{modulo}/{accion}`.
+- El `schema.py` debe ser estricto con los campos: `extra="forbid"` (o `extra="allow"` con allowlist explícito y validador que rechace lo demás). Fuera del allowlist nada llega a SAP.
 - Los errores SAP deben guardarse en `upload_error` con `error_type = "SAP"` y el payload de respuesta original.
 - Nunca lanzar excepciones no manejadas desde `sap_service.py` — capturar y retornar error estructurado al handler.
 

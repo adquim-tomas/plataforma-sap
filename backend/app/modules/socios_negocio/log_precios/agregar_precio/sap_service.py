@@ -1,13 +1,16 @@
 from app.core.sap_client import SAPClient
-from app.modules.socios_negocio.log_precios.schema import LINE_FIELDS, LogPreciosRow
+from app.modules.socios_negocio.log_precios.agregar_precio.schema import (
+    LINE_FIELDS,
+    AgregarPrecioRow,
+)
 
 IVA_RATE = 0.19
 
 
-class LogPreciosSAPService:
+class AgregarPrecioSAPService:
 
     @staticmethod
-    async def append_line(sap: SAPClient, row: LogPreciosRow) -> None:
+    async def append_line(sap: SAPClient, row: AgregarPrecioRow) -> None:
         """
         PATCH NX_LOGPRECIOS('{Code}') con una nueva línea en
         NX_LOGDETALLECollection. Sin LineId → SAP B1 hace append.

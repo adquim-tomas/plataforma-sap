@@ -3,9 +3,9 @@ from pydantic import ConfigDict, Field, field_validator
 from app.modules.shared.base_schema import RowBase
 
 
-class OrdenCompraServicioRow(RowBase):
+class CrearServicioRow(RowBase):
     """
-    Schema de una fila del Excel para Orden de Compra tipo SERVICIO.
+    Acción: crear una Orden de Compra tipo SERVICIO.
 
     Genera un POST a `/PurchaseOrders` con `DocType="dDocument_Service"`
     y una única línea contable (sin items de inventario).
