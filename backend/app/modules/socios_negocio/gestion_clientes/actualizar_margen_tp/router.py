@@ -1,0 +1,34 @@
+from app.core.sap_client import SAPClient
+from app.modules.shared.base_router import BaseUploadHandler
+from app.modules.shared.base_schema import RowValidationError
+from app.modules.socios_negocio.gestion_clientes.actualizar_margen_tp.sap_service import (
+    ActualizarMargenTPSAPService,
+)
+from app.modules.socios_negocio.gestion_clientes.actualizar_margen_tp.schema import (
+    ActualizarMargenTPRow,
+)
+from app.modules.socios_negocio.gestion_clientes.actualizar_margen_tp.validator import (
+    ActualizarMargenTPValidator,
+)
+
+
+class ActualizarMargenTPHandler(BaseUploadHandler[ActualizarMargenTPRow]):
+
+    @property
+    def schema_class(self) -> type[ActualizarMargenTPRow]:
+        return ActualizarMargenTPRow
+
+    @property
+    def sap_module(self) -> str:
+        return "socios_negocio/gestion_clientes/actualizar_margen_tp"
+
+    async def sync_row(self, sap: SAPClient, row: ActualizarMargenTPRow) -> None:
+        business_errors = await ActualizarMargenTPValidator.validate(sap, row)
+        if business_errors:
+            raise RowValidationError(
+                " | ".join(business_errors),
+                code="business_validation",
+                field="Code",
+            )
+
+        await ActualizarMargenTPSAPService.update(sap, row)

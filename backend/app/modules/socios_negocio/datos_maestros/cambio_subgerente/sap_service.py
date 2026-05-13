@@ -1,22 +1,15 @@
 from app.core.sap_client import SAPClient
 from app.modules.shared.base_schema import RowValidationError
 from app.modules.shared.base_validator import SAPValidator
-from app.modules.socios_negocio.datos_maestros.cambio_cartera.schema import (
-    CambioCarteraRow,
+from app.modules.socios_negocio.datos_maestros.cambio_subgerente.schema import (
+    CambioSubgerenteRow,
 )
 
 
-class CambioCarteraSAPService:
-    """
-    PATCH /BusinessPartners('{CardCode}') con una entrada en BPAddresses que
-    identifica la sucursal por RowNum y reasigna `U_LMM_ZN_Encargado`.
-
-    SAP B1 hace upsert por RowNum dentro de BPAddresses sin pisar otras
-    direcciones — así trabaja el legacy de Pedro (`update_zonal_sucursal`).
-    """
+class CambioSubgerenteSAPService:
 
     @staticmethod
-    async def update(sap: SAPClient, row: CambioCarteraRow) -> None:
+    async def update(sap: SAPClient, row: CambioSubgerenteRow) -> None:
         row_num = await SAPValidator.find_bp_address_row_num(
             sap, row.CardCode, row.AddressName, row.AddressType
         )
@@ -34,7 +27,7 @@ class CambioCarteraSAPService:
                     "RowNum": row_num,
                     "BPCode": row.CardCode,
                     "AddressType": row.AddressType,
-                    "U_LMM_ZN_Encargado": row.Zonal,
+                    "U_LMM_ZN_SG": row.Subgerente,
                 }
             ]
         }

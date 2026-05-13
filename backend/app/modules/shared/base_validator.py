@@ -80,13 +80,28 @@ class SAPValidator:
         Equivalente a `SalePerson.checkZonal` en classsocio.py:397 de Pedro:
         filtra por Active='tYES' y U_RHD_TipoVendedor='ZONAL'.
         """
+        return await SAPValidator._sales_person_of_type_exists(sap, zonal_name, "ZONAL")
+
+    @staticmethod
+    async def subgerente_exists(sap: SAPClient, name: str) -> bool:
+        """
+        Verifica que exista un SalesPerson activo de tipo SUBGERENTE con ese nombre.
+        Equivalente a `SalePerson.checkSG` en classsocio.py:416 de Pedro.
+        """
+        return await SAPValidator._sales_person_of_type_exists(sap, name, "SUBGERENTE")
+
+    @staticmethod
+    async def _sales_person_of_type_exists(
+        sap: SAPClient, name: str, tipo_vendedor: str
+    ) -> bool:
+        """Helper compartido para validar SalesEmployee por nombre + tipo."""
         try:
-            escaped = zonal_name.replace("'", "''")
+            escaped = name.replace("'", "''")
             results = await sap.get_all(
                 "SalesPersons",
                 filters=(
                     f"Active eq 'tYES' and "
-                    f"U_RHD_TipoVendedor eq 'ZONAL' and "
+                    f"U_RHD_TipoVendedor eq '{tipo_vendedor}' and "
                     f"SalesEmployeeName eq '{escaped}'"
                 ),
                 select=["SalesEmployeeCode"],
@@ -94,6 +109,38 @@ class SAPValidator:
             return len(results) > 0
         except Exception:
             return False
+
+    @staticmethod
+    async def find_bp_address_row_num(
+        sap: SAPClient,
+        card_code: str,
+        address_name: str,
+        address_type: str,
+    ) -> int | None:
+        """
+        Devuelve el `RowNum` de la entrada de `BPAddresses` que coincide con
+        (`AddressName`, `AddressType`) dentro del BP, o `None` si no existe.
+
+        Patrón usado por todas las acciones de Datos Maestros que tocan una
+        sucursal específica del SN (cambio_cartera, cambio_subgerente, etc.).
+        """
+        try:
+            bp_data = await sap.get(
+                f"BusinessPartners('{card_code}')",
+                params={"$select": "BPAddresses"},
+            )
+        except SAPNotFoundError:
+            return None
+
+        addresses: list[dict] = bp_data.get("BPAddresses", [])
+        for addr in addresses:
+            if (
+                addr.get("AddressName") == address_name
+                and addr.get("AddressType") == address_type
+            ):
+                row_num = addr.get("RowNum")
+                return int(row_num) if row_num is not None else None
+        return None
 
     @staticmethod
     async def nx_gcliente_exists(sap: SAPClient, code: str) -> bool:

@@ -44,7 +44,7 @@ parse Excel → validate Pydantic → insert SAP → save BD
 |---------|-----------|
 | `base_schema.py` | `RowBase`, `DocumentLineBase`, `APIError`, `RowValidationError`, `ErrorSource` |
 | `base_router.py` | `BaseUploadHandler`, `UploadResult`, `RowError` |
-| `base_validator.py` | `SAPValidator.card_code_exists` / `item_code_exists` / `account_code_exists` / `warehouse_exists` / `sales_person_exists` / `zonal_exists` / `nx_gcliente_exists` / `nx_gcliente_line_exists` / `nx_logprecios_exists` |
+| `base_validator.py` | `SAPValidator.card_code_exists` / `item_code_exists` / `account_code_exists` / `warehouse_exists` / `sales_person_exists` / `zonal_exists` / `subgerente_exists` / `find_bp_address_row_num` / `nx_gcliente_exists` / `nx_gcliente_line_exists` / `nx_logprecios_exists` |
 
 ### Estructura por Módulo
 
@@ -107,8 +107,16 @@ Cada fila es un endpoint concreto. Solo se crean acciones que tienen respaldo co
 | Módulo SAP | Acción | Endpoint | Operación SAP | Origen |
 |------------|--------|----------|---------------|--------|
 | Datos Maestros (BusinessPartners) | Activar / Desactivar | `socios_negocio/datos_maestros/activar_desactivar` | PATCH `BusinessPartners('{CardCode}')` con `Valid` + `Frozen` | `Conexion_Service_Layer_SAP/clases/classsocio.py::SN.update_SN_activo` |
-| Datos Maestros (BusinessPartners) | Cambio de cartera | `socios_negocio/datos_maestros/cambio_cartera` | PATCH `BusinessPartners('{CardCode}')` con `BPAddresses[{RowNum}].U_LMM_ZN_Encargado` | `Conexion_Service_Layer_SAP/clases/classsocio.py::SN.update_zonal_sucursal` + `update_many_zonal_sucursal` |
-| Datos Maestros (BusinessPartners) | Bloqueo COFASE | `socios_negocio/datos_maestros/bloqueo_cofase` | PATCH `BusinessPartners('{CardCode}')` con `Valid=tNO`+`Frozen=tYES`+`U_tipo_linea`+`CreditLimit=0`+`MaxCommitment=0`+`FreeText` apendado | `Conexion_Service_Layer_SAP/clases/classsocio.py::SN.bloqueo_masivo_COFASE` + `update_many_bloqueo_cofase` |
+| Datos Maestros (BusinessPartners) | Cambio de cartera | `socios_negocio/datos_maestros/cambio_cartera` | PATCH `BPAddresses[{RowNum}].U_LMM_ZN_Encargado` | `classsocio.py::SN.update_zonal_sucursal` + `update_many_zonal_sucursal` |
+| Datos Maestros (BusinessPartners) | Cambio de subgerente | `socios_negocio/datos_maestros/cambio_subgerente` | PATCH `BPAddresses[{RowNum}].U_LMM_ZN_SG` | `classsocio.py::SN.update_subgerente_sucursal` + `update_many_SG_sucursal` |
+| Datos Maestros (BusinessPartners) | Cambio de condición de pago | `socios_negocio/datos_maestros/cambio_cond_pago` | PATCH `BPAddresses[{RowNum}].U_LMM_CondPago` + `U_LMM_DescPago` | `classsocio.py::SN.updateCodPago` + `update_many_cod_pago` |
+| Datos Maestros (BusinessPartners) | Cambio de región y cpago | `socios_negocio/datos_maestros/cambio_region_cpago` | PATCH `BPAddresses[{RowNum}].State` + `U_LMM_CondPago` + `U_LMM_DescPago` | `classsocio.py::SN.update_zonal_region_cpago` + `update_many_region` |
+| Datos Maestros (BusinessPartners) | Bloqueo COFASE | `socios_negocio/datos_maestros/bloqueo_cofase` | PATCH masivo con `Valid=tNO`+`Frozen=tYES`+`U_tipo_linea`+`CreditLimit=0`+`MaxCommitment=0`+`FreeText` apendado | `classsocio.py::SN.bloqueo_masivo_COFASE` + `update_many_bloqueo_cofase` |
+| Gestión de Clientes (NX_GCLIENTE) | Agregar línea | `socios_negocio/gestion_clientes/agregar_linea` | PATCH `NX_GCLIENTE('{Code}')` con upsert por `LineId` en `NX_DETCLIENTECollection` | `classGC.py::GC.newlineGC` + `update_many_gc` |
+| Gestión de Clientes (NX_GCLIENTE) | Actualizar margen + TP precio | `socios_negocio/gestion_clientes/actualizar_margen_tp` | PATCH línea con `U_NX_Margen` + `U_LMM_ESP` | `classmargen.py::MargenChange.updateMargenadquimTPprecio_margen` |
+| Gestión de Clientes (NX_GCLIENTE) | Actualizar NC | `socios_negocio/gestion_clientes/actualizar_nc` | PATCH línea con `U_LMM_NC` | `classmargen.py::MargenChange.updateNc` + `updateManyNc` |
+| Gestión de Clientes (NX_GCLIENTE) | Actualizar precio especial | `socios_negocio/gestion_clientes/actualizar_esp` | PATCH línea con `U_LMM_ESP` | `classmargen.py::MargenChange.updateEsp` + `updateManyEsp` |
+| Gestión de Clientes (NX_GCLIENTE) | Eliminar cliente | `socios_negocio/gestion_clientes/eliminar_cliente` | DELETE `NX_GCLIENTE('{Code}')` (header + todas sus líneas) | `classGC.py::GC.deleteGC` + `multi_deleteGC` |
 
 #### Datos Maestros — Activar / Desactivar
 
@@ -117,12 +125,38 @@ Cada fila es un endpoint concreto. Solo se crean acciones que tienen respaldo co
 - Schema con `extra="forbid"`: cualquier columna adicional es rechazada por Pydantic.
 - Validador SAP: `card_code_exists`.
 
+#### Patrón compartido de las acciones que tocan una sucursal del SN
+
+Las acciones que modifican una dirección puntual de `BPAddresses` (`cambio_cartera`, `cambio_subgerente`, `cambio_cond_pago`, `cambio_region_cpago`) siguen el mismo patrón:
+
+1. Schema con `extra="forbid"`: `CardCode`, `AddressName`, `AddressType` (`bo_ShipTo` o `bo_BillTo`) son obligatorios + los campos específicos de cada acción.
+2. Validator chequea `card_code_exists` (+ validadores específicos según la acción).
+3. Service usa el helper `SAPValidator.find_bp_address_row_num(card_code, address_name, address_type)` para resolver el `RowNum` por GET. Si no matchea, lanza `RowValidationError` con `code="address_not_found"`.
+4. PATCH con una sola entrada `{RowNum, BPCode, AddressType, <campos a actualizar>}` — SAP B1 upserta por `RowNum` sin pisar otras direcciones.
+
 #### Datos Maestros — Cambio de cartera
 
-- Campos: `CardCode`, `AddressName`, `AddressType` (`bo_ShipTo` o `bo_BillTo`), `Zonal` — todos obligatorios. Schema con `extra="forbid"`.
-- El operador entrega el **nombre** de la sucursal (`AddressName`); el servicio hace `GET BusinessPartners('{CardCode}')?$select=BPAddresses` para resolver el `RowNum` correspondiente y luego envía un PATCH con una sola entrada en `BPAddresses` que SAP B1 upserta por `RowNum` — sin pisar otras direcciones (mismo patrón que el legacy de Pedro).
-- `Zonal` se valida contra `SalesPersons` filtrando `Active eq 'tYES' and U_RHD_TipoVendedor eq 'ZONAL'` (nuevo helper `SAPValidator.zonal_exists`).
-- Validadores SAP: `card_code_exists`, `zonal_exists`. Si la sucursal no existe en `BPAddresses`, el servicio lanza `RowValidationError` con `code="address_not_found"`.
+- Campos específicos: `Zonal` (str — `SalesEmployeeName`).
+- PATCH: `U_LMM_ZN_Encargado = Zonal`.
+- Validador específico: `zonal_exists` (filtra `SalesPersons` por `Active='tYES'` y `U_RHD_TipoVendedor='ZONAL'`).
+
+#### Datos Maestros — Cambio de subgerente
+
+- Campos específicos: `Subgerente` (str — `SalesEmployeeName`).
+- PATCH: `U_LMM_ZN_SG = Subgerente`.
+- Validador específico: `subgerente_exists` (`U_RHD_TipoVendedor='SUBGERENTE'`).
+
+#### Datos Maestros — Cambio de condición de pago
+
+- Campos específicos: `CondPago` (int), `DescPago` (str).
+- PATCH: `U_LMM_CondPago = CondPago`, `U_LMM_DescPago = DescPago`.
+- Sin validador adicional sobre los códigos — Pedro tampoco los valida; SAP rechaza si son inválidos.
+
+#### Datos Maestros — Cambio de región y cpago
+
+- Campos específicos: `State` (int), `CondPago` (int), `DescPago` (str).
+- PATCH: `State`, `U_LMM_CondPago`, `U_LMM_DescPago`.
+- Sin validador adicional sobre los códigos.
 
 #### Datos Maestros — Bloqueo COFASE
 
@@ -130,6 +164,50 @@ Cada fila es un endpoint concreto. Solo se crean acciones que tienen respaldo co
 - Todos los demás cambios son **server-side fijos**, sin parámetros: `Valid=tNO`, `Frozen=tYES`, `U_tipo_linea="Sin línea"`, `CreditLimit=0`, `MaxCommitment=0`.
 - El servicio hace `GET BusinessPartners('{CardCode}')?$select=FreeText`, appendea `"\\r{DD-MM-YYYY} COBERTURA RETIRADA"` (fecha actual del servidor) al texto existente y lo incluye en el PATCH. El comentario previo se preserva.
 - Validador SAP: `card_code_exists`.
+
+#### Gestión de Clientes — Agregar línea
+
+- Identificadores (obligatorios): `Code` (CardCode del header NX_GCLIENTE) + `LineId` (id de la línea en `NX_DETCLIENTECollection`).
+- Campos opcionales — al menos uno debe tener valor: `U_NX_Margen` (0-1), `U_NX_Capacidad`, `U_NX_CodArt`, `U_LMM_ESP`, `U_LMM_DescArt`, `U_LMM_Sucural` (**typo intencional, sin 's' final**), `U_LMM_Precio_Estimado`, `U_LMM_FI_SPOT`, `U_LMM_NC` (adquim), `U_LMM_Precio_Estimado_Neto` (adclean), `U_LMM_Formato` (adclean).
+- Schema con `extra="forbid"`; los floats vienen tipados desde Pydantic v2 (coerción automática de string a float).
+- PATCH a `NX_GCLIENTE('{Code}')` con una sola entrada en `NX_DETCLIENTECollection`. SAP B1 hace upsert por LineId — si la línea existe se actualiza, si no se crea. Las demás líneas del cliente no se tocan.
+- Validador SAP: `nx_gcliente_exists` (header existe). No se valida existencia del LineId (la upsert decide).
+- Pedro tiene dos variantes (`adquim` vs `adclean`) que difieren en cuáles UDFs aplican; acá se unifica: el operador completa solo los campos relevantes a su DB.
+
+#### Patrón compartido de las acciones que editan una línea existente de NX_GCLIENTE
+
+Las acciones `actualizar_margen_tp`, `actualizar_nc` y `actualizar_esp` siguen el mismo patrón:
+
+1. Schema con `extra="forbid"`: `Code` + `LineId` obligatorios + los campos específicos de la acción.
+2. Validator chequea `nx_gcliente_exists(Code)` y `nx_gcliente_line_exists(Code, LineId)`. A diferencia de `agregar_linea`, acá la existencia de la línea es obligatoria — Pedro tiene funciones distintas para crear vs editar y respetamos esa frontera.
+3. Service hace PATCH a `NX_GCLIENTE('{Code}')` con una única entrada en `NX_DETCLIENTECollection` (`Code` + `LineId` + los campos a actualizar). Las demás líneas del cliente quedan intactas (upsert por LineId).
+4. Para crear líneas nuevas, redirigir al operador a `agregar_linea`.
+
+#### Gestión de Clientes — Actualizar margen + TP precio
+
+- Campos: `Code`, `LineId`, `U_NX_Margen` (0-1), `U_LMM_ESP`.
+- PATCH: `U_NX_Margen` + `U_LMM_ESP` de la línea indicada.
+- Pedro: `MargenChange.updateMargenadquimTPprecio_margen`.
+
+#### Gestión de Clientes — Actualizar NC
+
+- Campos: `Code`, `LineId`, `U_LMM_NC`.
+- PATCH: `U_LMM_NC`.
+- Pedro: `MargenChange.updateNc`. Pedro maneja 2 opciones (LineId vs keys de negocio); tomamos opción 1 (LineId explícito).
+
+#### Gestión de Clientes — Actualizar precio especial
+
+- Campos: `Code`, `LineId`, `U_LMM_ESP`.
+- PATCH: `U_LMM_ESP`.
+- Pedro: `MargenChange.updateEsp`. Opción 1 (LineId explícito).
+- Solapamiento intencional con `actualizar_margen_tp`: esta acción modifica solo ESP; la otra modifica margen + ESP juntos. Reflejan dos llamadas distintas de Pedro.
+
+#### Gestión de Clientes — Eliminar cliente
+
+- Único campo aceptado: `Code`. Schema con `extra="forbid"`.
+- `DELETE NX_GCLIENTE('{Code}')` — borra el header entero, lo que implícitamente borra todas las líneas del `NX_DETCLIENTECollection`. **No** hay acción para borrar una línea puntual: Pedro `GC.deleteGC` solo opera a nivel header.
+- Validador SAP: `nx_gcliente_exists`.
+- Pedro: `GC.deleteGC` + `multi_deleteGC`.
 
 ### Documentos SAP estándar — POST vs PATCH
 
@@ -149,8 +227,15 @@ Los módulos UDO (Datos Maestros, Gestión de Clientes, Log de Precios) usan **P
 | SAPValidator.card_code_exists | ✅ | shared validator |
 | **Datos Maestros — Activar / Desactivar** | ✅ | PATCH `BusinessPartners` con `Valid`+`Frozen` (Pedro-grounded en `update_SN_activo`) |
 | **Datos Maestros — Cambio de cartera** | ✅ | PATCH `BPAddresses[RowNum].U_LMM_ZN_Encargado` (Pedro-grounded en `update_zonal_sucursal`) |
+| **Datos Maestros — Cambio de subgerente** | ✅ | PATCH `BPAddresses[RowNum].U_LMM_ZN_SG` (Pedro-grounded en `update_subgerente_sucursal`) |
+| **Datos Maestros — Cambio de condición de pago** | ✅ | PATCH `BPAddresses[RowNum].U_LMM_CondPago` + `U_LMM_DescPago` (Pedro-grounded en `updateCodPago`) |
+| **Datos Maestros — Cambio de región y cpago** | ✅ | PATCH `BPAddresses[RowNum].State` + `U_LMM_CondPago` + `U_LMM_DescPago` (Pedro-grounded en `update_zonal_region_cpago`) |
 | **Datos Maestros — Bloqueo COFASE** | ✅ | PATCH masivo con valores fijos + apend de fecha en `FreeText` (Pedro-grounded en `bloqueo_masivo_COFASE`) |
-| Gestión de Clientes | ⬜ | sin acciones Pedro-grounded definidas todavía |
+| **Gestión de Clientes — Agregar línea** | ✅ | PATCH `NX_GCLIENTE` upsert por LineId en `NX_DETCLIENTECollection` (Pedro-grounded en `GC.newlineGC`) |
+| **Gestión de Clientes — Actualizar margen + TP precio** | ✅ | PATCH línea con `U_NX_Margen` + `U_LMM_ESP` (Pedro-grounded en `MargenChange.updateMargenadquimTPprecio_margen`) |
+| **Gestión de Clientes — Actualizar NC** | ✅ | PATCH línea con `U_LMM_NC` (Pedro-grounded en `MargenChange.updateNc`) |
+| **Gestión de Clientes — Actualizar precio especial** | ✅ | PATCH línea con `U_LMM_ESP` (Pedro-grounded en `MargenChange.updateEsp`) |
+| **Gestión de Clientes — Eliminar cliente** | ✅ | DELETE header NX_GCLIENTE (Pedro-grounded en `GC.deleteGC`) |
 | Log de Precios | ⬜ | sin acciones Pedro-grounded definidas todavía |
 | Orden de Compra | ⬜ | sin acciones Pedro-grounded definidas todavía |
 | Cotización de Compras | ⬜ | sin scaffolding |

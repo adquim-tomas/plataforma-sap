@@ -20,6 +20,30 @@ from app.modules.socios_negocio.datos_maestros.bloqueo_cofase.router import (
 from app.modules.socios_negocio.datos_maestros.cambio_cartera.router import (
     CambioCarteraHandler,
 )
+from app.modules.socios_negocio.datos_maestros.cambio_cond_pago.router import (
+    CambioCondPagoHandler,
+)
+from app.modules.socios_negocio.datos_maestros.cambio_region_cpago.router import (
+    CambioRegionCpagoHandler,
+)
+from app.modules.socios_negocio.datos_maestros.cambio_subgerente.router import (
+    CambioSubgerenteHandler,
+)
+from app.modules.socios_negocio.gestion_clientes.agregar_linea.router import (
+    AgregarLineaHandler,
+)
+from app.modules.socios_negocio.gestion_clientes.actualizar_margen_tp.router import (
+    ActualizarMargenTPHandler,
+)
+from app.modules.socios_negocio.gestion_clientes.actualizar_nc.router import (
+    ActualizarNcHandler,
+)
+from app.modules.socios_negocio.gestion_clientes.actualizar_esp.router import (
+    ActualizarEspHandler,
+)
+from app.modules.socios_negocio.gestion_clientes.eliminar_cliente.router import (
+    EliminarClienteHandler,
+)
 
 router = APIRouter(prefix="/uploads", tags=["uploads"])
 logger = logging.getLogger(__name__)
@@ -29,9 +53,17 @@ logger = logging.getLogger(__name__)
 # los campos relevantes a esa operación; el operador no puede mandar columnas
 # fuera del allowlist de la acción seleccionada.
 HANDLERS = {
-    "socios_negocio/datos_maestros/activar_desactivar": ActivarDesactivarHandler(),
-    "socios_negocio/datos_maestros/cambio_cartera":     CambioCarteraHandler(),
-    "socios_negocio/datos_maestros/bloqueo_cofase":     BloqueoCofaseHandler(),
+    "socios_negocio/datos_maestros/activar_desactivar":  ActivarDesactivarHandler(),
+    "socios_negocio/datos_maestros/cambio_cartera":      CambioCarteraHandler(),
+    "socios_negocio/datos_maestros/cambio_subgerente":   CambioSubgerenteHandler(),
+    "socios_negocio/datos_maestros/cambio_cond_pago":    CambioCondPagoHandler(),
+    "socios_negocio/datos_maestros/cambio_region_cpago": CambioRegionCpagoHandler(),
+    "socios_negocio/datos_maestros/bloqueo_cofase":      BloqueoCofaseHandler(),
+    "socios_negocio/gestion_clientes/agregar_linea":      AgregarLineaHandler(),
+    "socios_negocio/gestion_clientes/actualizar_margen_tp": ActualizarMargenTPHandler(),
+    "socios_negocio/gestion_clientes/actualizar_nc":       ActualizarNcHandler(),
+    "socios_negocio/gestion_clientes/actualizar_esp":      ActualizarEspHandler(),
+    "socios_negocio/gestion_clientes/eliminar_cliente":    EliminarClienteHandler(),
 }
 
 

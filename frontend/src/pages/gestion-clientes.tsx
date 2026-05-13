@@ -8,9 +8,9 @@ import { UploadPanel } from "@/components/uploads/UploadPanel"
 import { findModuleByPath } from "@/lib/routes"
 import { cn } from "@/lib/utils"
 
-const PATH = "/uploads/datos-maestros"
+const PATH = "/uploads/gestion-clientes"
 
-export function DatosMaestrosPage() {
+export function GestionClientesPage() {
   const navigate = useNavigate()
   const module = useMemo(() => findModuleByPath(PATH), [])
   const actions = module?.actions ?? []
@@ -26,9 +26,9 @@ export function DatosMaestrosPage() {
       <div className="flex items-baseline justify-between border-b border-border-strong pb-3">
         <div>
           <Label>socios de negocio</Label>
-          <h1 className="mt-1 text-lg font-medium">Datos maestros</h1>
+          <h1 className="mt-1 text-lg font-medium">Gestión de Clientes</h1>
           <p className="mt-1 text-[0.82rem] text-muted-foreground">
-            Acciones masivas sobre socios de negocio que ya existen en SAP. Elige qué quieres hacer y sube el Excel.
+            Acciones masivas sobre clientes ya registrados en NX_GCLIENTE — márgenes, precios estimados, capacidades, sucursal, formato.
           </p>
         </div>
         <Button

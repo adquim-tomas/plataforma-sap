@@ -46,7 +46,7 @@ Las páginas que un operador usa (todas las de `/uploads/*`) deben hablar su idi
 
 **Sí mostrar:**
 - Título + subtítulo en lenguaje plano: qué hace esta pantalla.
-- Instrucciones en pasos cortos (subí, descargá, revisá).
+- Instrucciones en pasos cortos (sube, descarga, revisa).
 - Reglas de negocio explicadas con ejemplos, no como bullets técnicos.
 - La acción principal (subir archivo) dominante visualmente.
 - Resultados legibles ("X filas actualizadas, Y fallaron — abajo el detalle").
@@ -152,8 +152,8 @@ Para módulos no implementados (`implemented: false`), `actions` es `undefined` 
 
 | Roman | Slug | Acciones implementadas | Backend |
 |-------|------|------------------------|---------|
-| I | `datos-maestros` | `activar-desactivar` | ✅ |
-| II | `gestion-clientes` | — | ⬜ |
+| I | `datos-maestros` | `activar-desactivar`, `cambio-cartera`, `cambio-subgerente`, `cambio-cond-pago`, `cambio-region-cpago`, `bloqueo-cofase` | ✅ |
+| II | `gestion-clientes` | `agregar-linea`, `actualizar-margen-tp`, `actualizar-nc`, `actualizar-esp`, `eliminar-cliente` | ✅ |
 | III | `log-precios` | — | ⬜ |
 | IV | `cotizacion` | — | ⬜ |
 | V | `orden-compra` | — | ⬜ |
@@ -208,8 +208,8 @@ Para módulos no implementados (`implemented: false`), `actions` es `undefined` 
 | GET batches / audit | ⬜ | LAST RUN queda en `—` hasta que backend exponga |
 | UploadDropzone / UploadPreview / UploadSummary / ErrorReport / UploadPanel (shared) | ✅ | en `src/components/uploads/` — reutilizables por todos los módulos |
 | Preview pre-subida (parsing cliente + chequeo de columnas obligatorias + confirmación) | ✅ | `previewExcel()` en `lib/excel.ts` (read-excel-file). `ModuleSchema` por módulo en `lib/routes.ts` define `requiredColumns` |
-| **Datos Maestros** UI | ✅ | Página con selector de acción (tabs). Acción única: **Activar / Desactivar** (`CardCode` + `Valid` o `Frozen`) |
-| **Gestión de Clientes** UI | ⬜ | sin backend |
+| **Datos Maestros** UI | ✅ | Página con selector de acción (tabs). 6 acciones: activar/desactivar, cambio de cartera, subgerente, cond pago, región+cpago, bloqueo COFASE |
+| **Gestión de Clientes** UI | ✅ | Página con selector de acción (tabs). 5 acciones: agregar línea, actualizar margen+TP, actualizar NC, actualizar ESP, eliminar cliente |
 | **Log de Precios** UI | ⬜ | sin backend |
 | **Orden de Compra** UI | ⬜ | sin backend |
 | **Cotización de Compras** UI | ⬜ | sin backend |
