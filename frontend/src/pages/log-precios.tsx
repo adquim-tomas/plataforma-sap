@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button"
 import { ActionHelp } from "@/components/uploads/ActionHelp"
 import { UploadPanel } from "@/components/uploads/UploadPanel"
 import { findModuleByPath } from "@/lib/routes"
-import { cn } from "@/lib/utils"
 
 const PATH = "/uploads/log-precios"
 
@@ -43,34 +42,24 @@ export function LogPreciosPage() {
       {/* Selector de acción */}
       <section>
         <Label>acción</Label>
-        <div
-          role="tablist"
-          className="mt-2 flex flex-wrap items-stretch border border-border bg-elev"
-        >
-          {actions.map((a, i) => {
-            const active = a.id === selected.id
-            return (
-              <button
-                key={a.id}
-                type="button"
-                role="tab"
-                aria-selected={active}
-                onClick={() => setActionId(a.id)}
-                className={cn(
-                  "px-3 py-2 text-[0.82rem] transition-colors",
-                  "border-r border-border last:border-r-0",
-                  active
-                    ? "bg-surface text-foreground border-b-2 border-b-primary -mb-px"
-                    : "text-muted-foreground hover:bg-surface hover:text-foreground",
-                )}
-              >
-                <span className="mr-2 text-[0.68rem] tabular-nums text-muted-foreground">
-                  {String(i + 1).padStart(2, "0")}
-                </span>
-                {a.title}
-              </button>
-            )
-          })}
+        <div className="relative mt-2 max-w-xl">
+          <select
+            value={selected.id}
+            onChange={(e) => setActionId(e.target.value)}
+            className="h-10 w-full appearance-none border border-border bg-elev px-3 pr-8 text-[0.82rem] text-foreground outline-none transition-colors focus:border-primary"
+          >
+            {actions.map((a, i) => (
+              <option key={a.id} value={a.id}>
+                {String(i + 1).padStart(2, "0")} · {a.title}
+              </option>
+            ))}
+          </select>
+          <span
+            aria-hidden
+            className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[0.7rem] text-muted-foreground"
+          >
+            ▾
+          </span>
         </div>
       </section>
 

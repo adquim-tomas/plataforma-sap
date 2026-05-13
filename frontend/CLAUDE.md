@@ -150,7 +150,7 @@ Slugs y acciones son la fuente única en [`src/lib/routes.ts`](src/lib/routes.ts
 
 ### Modelo de un módulo
 
-Cada `ModuleEntry` se particiona en **acciones** (`actions: ModuleAction[]`). El módulo no tiene un endpoint propio: cada acción tiene su `apiPath` y `schema` específicos. La página del módulo muestra un selector de acción (tabs) y solo permite subir Excel para la acción elegida — el operador no puede mandar campos fuera del allowlist de la acción seleccionada.
+Cada `ModuleEntry` se particiona en **acciones** (`actions: ModuleAction[]`). El módulo no tiene un endpoint propio: cada acción tiene su `apiPath` y `schema` específicos. La página del módulo muestra un selector de acción (dropdown) y solo permite subir Excel para la acción elegida — el operador no puede mandar campos fuera del allowlist de la acción seleccionada.
 
 Para módulos no implementados (`implemented: false`), `actions` es `undefined` o vacío y la ruta cae al `ModulePlaceholderPage`. Cuando se implemente el módulo se agregan las acciones al registro y se construye la página propia siguiendo el patrón de `DatosMaestrosPage`/`GestionClientesPage`.
 
@@ -212,14 +212,14 @@ Para módulos no implementados (`implemented: false`), `actions` es `undefined` 
 | GET batches / audit | ⬜ | LAST RUN queda en `—` hasta que backend exponga |
 | UploadDropzone / UploadPreview / UploadSummary / ErrorReport / UploadPanel (shared) | ✅ | en `src/components/uploads/` — reutilizables por todos los módulos |
 | Preview pre-subida (parsing cliente + chequeo de columnas obligatorias + confirmación) | ✅ | `previewExcel()` en `lib/excel.ts` (read-excel-file). `ModuleSchema` por módulo en `lib/routes.ts` define `requiredColumns` |
-| **Datos Maestros** UI | ✅ | Página con selector de acción (tabs). 6 acciones: activar/desactivar, cambio de cartera, subgerente, cond pago, región+cpago, bloqueo COFASE |
-| **Gestión de Clientes** UI | ✅ | Página con selector de acción (tabs). 5 acciones: agregar línea, actualizar margen+TP, actualizar NC, actualizar ESP, eliminar cliente |
-| **Log de Precios** UI | ✅ | Página con selector de acción (tabs). 3 acciones: agregar precio, crear log, eliminar log |
-| **Orden de Compra** UI | ✅ | Página con selector de acción (tabs). 1 acción: crear OC de servicio |
+| **Datos Maestros** UI | ✅ | Página con selector de acción (dropdown). 6 acciones: activar/desactivar, cambio de cartera, subgerente, cond pago, región+cpago, bloqueo COFASE |
+| **Gestión de Clientes** UI | ✅ | Página con selector de acción (dropdown). 5 acciones: agregar línea, actualizar margen+TP, actualizar NC, actualizar ESP, eliminar cliente |
+| **Log de Precios** UI | ✅ | Página con selector de acción (dropdown). 3 acciones: agregar precio, crear log, eliminar log |
+| **Orden de Compra** UI | ✅ | Página con selector de acción (dropdown). 1 acción: crear OC de servicio |
 | **Cotización de Compras** UI | ⬜ | sin backend |
 | **Factura de Proveedores** UI | ⬜ | sin backend (bloqueado por repo de Pedro) |
-| **Nota de Venta** UI | ✅ | Página con selector de acción (tabs). 3 acciones: quitar folio, cancelar boleta, cambio de libro |
-| **Entrega** UI | ✅ | Página con selector de acción (tabs). 1 acción: crear desde folio |
+| **Nota de Venta** UI | ✅ | Página con selector de acción (dropdown). 3 acciones: quitar folio, cancelar boleta, cambio de libro |
+| **Entrega** UI | ✅ | Página con selector de acción (dropdown). 1 acción: crear desde folio |
 | Audit Log page | ⬜ | |
 
 ---
