@@ -144,6 +144,7 @@ Configuración en [`src/router.tsx`](src/router.tsx) usando `createBrowserRouter
 | `/uploads/nota-venta` | `AppShell` → `NotaVentaPage` | requerida |
 | `/uploads/entrega` | `AppShell` → `EntregaPage` | requerida |
 | `/uploads/:slug` | `AppShell` → `ModulePlaceholderPage` (fallback) | requerida |
+| `/audit` | `AppShell` → `AuditPage` (bitácora antes/después) | requerida |
 | `*` | `NotFoundPage` | público |
 
 Slugs y acciones son la fuente única en [`src/lib/routes.ts`](src/lib/routes.ts) (registro `MODULES`).
@@ -220,7 +221,7 @@ Para módulos no implementados (`implemented: false`), `actions` es `undefined` 
 | **Factura de Proveedores** UI | ⬜ | sin backend (bloqueado por repo de Pedro) |
 | **Nota de Venta** UI | ✅ | Página con selector de acción (dropdown). 3 acciones: quitar folio, cancelar boleta, cambio de libro |
 | **Entrega** UI | ✅ | Página con selector de acción (dropdown). 1 acción: crear desde folio |
-| Audit Log page | ⬜ | |
+| Audit Log page | ✅ | `/audit` con tabla densa, filtros (acción/usuario/recurso/estado), expand row → diff antes/después |
 
 ---
 

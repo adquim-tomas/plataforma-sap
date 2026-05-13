@@ -1,7 +1,9 @@
 import enum
 from datetime import datetime
+from typing import Any
 
-from sqlalchemy import DateTime, Enum, Integer, String, Text, func
+from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String, Text, func
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -17,6 +19,11 @@ class AuditStatus(str, enum.Enum):
     SUCCESS = "success"
     PARTIAL = "partial"    # batch con mezcla de éxitos y errores
     FAILED  = "failed"
+
+
+class OperationStatus(str, enum.Enum):
+    OK   = "ok"
+    FAIL = "fail"
 
 
 class AuditLog(Base):
@@ -41,3 +48,37 @@ class AuditLog(Base):
                                             nullable=False,
                                             index=True
                                         )
+
+
+class OperationAudit(Base):
+    """
+    Snapshot estructurado de cada fila procesada en un upload: qué recurso
+    SAP cambió, valores antes y después, y si la operación fue exitosa.
+
+    `fields_before` es null para operaciones de creación (no había estado
+    previo). `fields_after` es null si la fila falló antes de tocar SAP
+    (validación o error previo al PATCH/POST).
+
+    Append-only: nunca se actualiza ni se borra. Habilita la página
+    `/audit` del frontend para que el operador vea el historial.
+    """
+    __tablename__ = "operation_audit"
+
+    id:             Mapped[int]                = mapped_column(Integer, primary_key=True)
+    batch_id:       Mapped[int]                = mapped_column(
+                                                    ForeignKey("upload_batch.id"),
+                                                    nullable=False, index=True,
+                                                )
+    row_index:      Mapped[int]                = mapped_column(Integer, nullable=False)
+    username:       Mapped[str]                = mapped_column(String(100), nullable=False, index=True)
+    sap_module:     Mapped[str]                = mapped_column(String(100), nullable=False, index=True)
+    resource_id:    Mapped[str | None]         = mapped_column(String(100), nullable=True, index=True)
+    fields_before:  Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    fields_after:   Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    status:         Mapped[str]                = mapped_column(Enum(OperationStatus), nullable=False)
+    error_message:  Mapped[str | None]         = mapped_column(Text, nullable=True)
+    created_at:     Mapped[datetime]           = mapped_column(
+                                                    DateTime,
+                                                    server_default=func.now(),
+                                                    nullable=False, index=True,
+                                                )

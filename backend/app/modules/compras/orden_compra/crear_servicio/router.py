@@ -22,8 +22,11 @@ class CrearServicioHandler(BaseUploadHandler[CrearServicioRow]):
     def sap_module(self) -> str:
         return "compras/orden_compra/crear_servicio"
 
+    async def validate(self, sap: SAPClient, row: CrearServicioRow) -> list[str]:
+        return await CrearServicioValidator.validate(sap, row)
+
     async def sync_row(self, sap: SAPClient, row: CrearServicioRow) -> None:
-        business_errors = await CrearServicioValidator.validate(sap, row)
+        business_errors = await self.validate(sap, row)
         if business_errors:
             raise RowValidationError(
                 " | ".join(business_errors),

@@ -22,8 +22,11 @@ class BloqueoCofaseHandler(BaseUploadHandler[BloqueoCofaseRow]):
     def sap_module(self) -> str:
         return "socios_negocio/datos_maestros/bloqueo_cofase"
 
+    async def validate(self, sap: SAPClient, row: BloqueoCofaseRow) -> list[str]:
+        return await BloqueoCofaseValidator.validate(sap, row)
+
     async def sync_row(self, sap: SAPClient, row: BloqueoCofaseRow) -> None:
-        business_errors = await BloqueoCofaseValidator.validate(sap, row)
+        business_errors = await self.validate(sap, row)
         if business_errors:
             raise RowValidationError(
                 " | ".join(business_errors),
@@ -32,3 +35,35 @@ class BloqueoCofaseHandler(BaseUploadHandler[BloqueoCofaseRow]):
             )
 
         await BloqueoCofaseSAPService.update(sap, row)
+
+    # ── Auditoría antes/después ───────────────────────────────────────────────
+
+    _AUDIT_FIELDS = (
+        "Valid", "Frozen", "U_tipo_linea",
+        "CreditLimit", "MaxCommitment", "FreeText",
+    )
+
+    def audit_resource_id(self, row: BloqueoCofaseRow) -> str:
+        return row.CardCode
+
+    async def fetch_before(self, sap: SAPClient, row: BloqueoCofaseRow) -> dict:
+        data = await sap.get(
+            f"BusinessPartners('{row.CardCode}')",
+            params={"$select": ",".join(self._AUDIT_FIELDS)},
+        )
+        return {field: data.get(field) for field in self._AUDIT_FIELDS}
+
+    def build_after(self, row: BloqueoCofaseRow) -> dict:
+        # Los valores fijos del bloqueo + el FreeText se computa al PATCHear;
+        # registramos los flags y los importes que sí son determinísticos.
+        # FreeText cambia (append de la fecha) y se ve en fields_before vs lo
+        # que el servicio construyó — para la bitácora basta con anotar la
+        # acción ("bloqueo aplicado").
+        return {
+            "Valid":         "tNO",
+            "Frozen":        "tYES",
+            "U_tipo_linea":  "Sin línea",
+            "CreditLimit":   0,
+            "MaxCommitment": 0,
+            "FreeText":      "<appendado server-side: COBERTURA RETIRADA>",
+        }

@@ -126,6 +126,19 @@ export function Sidebar() {
         )}
       </div>
 
+      <NavLink
+        to="/audit"
+        className={({ isActive }) =>
+          cn(
+            "flex h-7 items-center gap-2 border-t border-border px-3",
+            "border-l-2 border-l-transparent transition-colors hover:bg-surface",
+            isActive && "border-l-primary bg-surface text-primary",
+          )
+        }
+      >
+        <Label className={"text-foreground"}>bitácora</Label>
+      </NavLink>
+
       <div className="border-t border-border px-3 py-2">
         <Label>endpoint</Label>
         <div className="mt-1 truncate text-[0.7rem] text-muted-foreground">

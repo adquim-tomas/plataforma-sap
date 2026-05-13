@@ -70,7 +70,8 @@ Los módulos sin implementar (Cotización de Compras, Factura de Proveedores, No
 |-------|-----------|
 | `upload_batch` | Registro de cada batch subido |
 | `upload_error` | Errores por fila con tipo y detalle |
-| `audit_log` | Log de auditoría de operaciones |
+| `audit_log` | Log de auditoría de operaciones (batch-level: login, upload, logout) |
+| `operation_audit` | Snapshot por fila con `fields_before` y `fields_after` (JSONB). Append-only. Alimenta `/api/v1/audit/operations` y la página `/audit` del frontend |
 
 ### Tipos de Error
 
@@ -89,8 +90,11 @@ Los módulos sin implementar (Cotización de Compras, Factura de Proveedores, No
 | Audit | `/api/v1/audit` |
 | Health | `/api/v1/health` |
 | Uploads | `/api/v1/uploads/{module_path}` |
+| Uploads (dry-run) | `/api/v1/uploads/preview/{module_path}` |
 
 `GET /api/v1/health/sap` reporta el estado del service account contra SAP. Siempre responde 200 con `{ ok, code, expires_at?, checked_at, message? }`. El frontend pollea esto cada 15s para alimentar el `HeartbeatDot` del StatusBar.
+
+`POST /api/v1/uploads/preview/{module_path}` ejecuta el pipeline en modo dry-run: parsea el Excel, valida Pydantic + `handler.validate()` (chequeos contra SAP) y devuelve `PreviewResult` con `valid_rows`, `error_rows` y el detalle de errores por fila. NO escribe en SAP ni en BD. Lo invoca el frontend al elegir el archivo para anticipar errores antes de confirmar la carga.
 
 ---
 

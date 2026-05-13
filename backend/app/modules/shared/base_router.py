@@ -1,6 +1,7 @@
 import logging
 import math
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 import io
 from typing import Any, Generic, TypeVar
 
@@ -9,6 +10,7 @@ from pydantic import BaseModel, ValidationError
 from sqlalchemy.orm import Session
 
 from app.core.sap_client import SAPClient, SAPError, SAPValidationError
+from app.models.audit import OperationAudit, OperationStatus
 from app.models.upload import BatchStatus, ErrorType, UploadBatch, UploadError
 from app.modules.shared.base_schema import APIError, ErrorSource, InvalidFileError
 
@@ -53,6 +55,26 @@ class UploadResult(BaseModel):
     errors: list[RowError]
 
 
+class PreviewResult(BaseModel):
+    """Resultado de una validación dry-run (no escribe en SAP ni en BD)."""
+    filename: str
+    total_rows: int
+    valid_rows: int
+    error_rows: int
+    errors: list[RowError]
+
+
+@dataclass
+class _AuditCapture:
+    """Snapshot pendiente de persistir; se rellena durante el procesamiento."""
+    row_index: int
+    resource_id: str | None = None
+    fields_before: dict | None = None
+    fields_after: dict | None = None
+    status: OperationStatus = OperationStatus.FAIL
+    error_message: str | None = None
+
+
 # ── Engine base ────────────────────────────────────────────────────────────────
 
 class BaseUploadHandler(ABC, Generic[SchemaT]):
@@ -76,6 +98,42 @@ class BaseUploadHandler(ABC, Generic[SchemaT]):
     @abstractmethod
     async def sync_row(self, sap: SAPClient, row: SchemaT) -> None: ...
 
+    async def validate(self, sap: SAPClient, row: SchemaT) -> list[str]:
+        """
+        Validaciones de negocio (consultas SAP) sin ejecutar la operación.
+
+        Las acciones con un `Validator` propio sobrescriben este método para
+        invocarlo. El default vacío sirve para acciones que solo dependen de
+        Pydantic (no chequean existencia en SAP). Lo usa el endpoint de
+        preview (dry-run) y el handler.sync_row de cada acción.
+        """
+        return []
+
+    # ── Hooks de auditoría (opcionales) ────────────────────────────────────────
+
+    def audit_resource_id(self, row: SchemaT) -> str | None:
+        """
+        Identificador del recurso SAP afectado por la fila (CardCode, Code,
+        DocEntry, etc.). Sirve para indexar y filtrar la bitácora. Devolver
+        None desactiva la auditoría para esta acción.
+        """
+        return None
+
+    async def fetch_before(self, sap: SAPClient, row: SchemaT) -> dict | None:
+        """
+        Snapshot SAP del recurso ANTES de aplicar la operación. Cada handler
+        decide qué GET hace y qué campos extrae. Default: None (no captura).
+        Para acciones que crean (POST puro) no hay 'before' — devolver None.
+        """
+        return None
+
+    def build_after(self, row: SchemaT) -> dict | None:
+        """
+        Snapshot de lo que el handler MANDÓ a SAP en esta fila. Pensado para
+        contrastar con `fetch_before`. Default: None (no captura).
+        """
+        return None
+
     # ── Método principal ───────────────────────────────────────────────────────
 
     async def process(
@@ -94,6 +152,7 @@ class BaseUploadHandler(ABC, Generic[SchemaT]):
 
         total_rows = len(df)
         errors: list[RowError] = []
+        audits: list[_AuditCapture] = []
         success_count = 0
 
         for idx, raw_row in df.iterrows():
@@ -103,9 +162,31 @@ class BaseUploadHandler(ABC, Generic[SchemaT]):
             if validated is None:
                 continue
 
-            success = await self._sync_row_safe(sap, validated, row_number, errors)
+            capture = _AuditCapture(row_index=row_number)
+            try:
+                capture.resource_id = self.audit_resource_id(validated)
+            except Exception:  # noqa: BLE001
+                capture.resource_id = None
+
+            if capture.resource_id is not None:
+                try:
+                    capture.fields_before = await self.fetch_before(sap, validated)
+                except (SAPError, SAPValidationError) as e:
+                    capture.fields_before = {"__error__": str(e)}
+
+            success = await self._sync_row_safe(
+                sap, validated, row_number, errors, capture
+            )
             if success:
                 success_count += 1
+                try:
+                    capture.fields_after = self.build_after(validated)
+                except Exception:  # noqa: BLE001
+                    capture.fields_after = None
+                capture.status = OperationStatus.OK
+
+            if capture.resource_id is not None or capture.status == OperationStatus.OK:
+                audits.append(capture)
 
         error_count = total_rows - success_count
         status = self._resolve_status(success_count, error_count, total_rows)
@@ -119,6 +200,7 @@ class BaseUploadHandler(ABC, Generic[SchemaT]):
             error_rows=error_count,
             status=status,
             errors=errors,
+            audits=audits,
         )
 
         logger.info(
@@ -133,6 +215,76 @@ class BaseUploadHandler(ABC, Generic[SchemaT]):
             success_rows=success_count,
             error_rows=error_count,
             status=status,
+            errors=errors,
+        )
+
+    async def validate_only(
+        self,
+        file_bytes: bytes,
+        filename: str,
+        sap: SAPClient,
+    ) -> PreviewResult:
+        """
+        Dry-run: parsea el Excel, valida fila por fila (Pydantic + validate
+        de negocio contra SAP) y devuelve los errores. NO escribe en SAP ni
+        crea registros en BD. Usado por el endpoint /preview para que el
+        operador vea errores antes de comprometer la carga.
+        """
+        try:
+            df = self._parse_excel(file_bytes)
+        except Exception as e:
+            raise InvalidFileError(f"No se pudo leer el archivo Excel: {e}") from e
+
+        total_rows = len(df)
+        errors: list[RowError] = []
+        valid_rows = 0
+
+        for idx, raw_row in df.iterrows():
+            row_number = int(idx) + 2
+
+            validated = self._validate_row(raw_row.to_dict(), row_number, errors)
+            if validated is None:
+                continue
+
+            try:
+                business_errors = await self.validate(sap, validated)
+            except SAPValidationError as e:
+                errors.append(RowError(
+                    row=row_number,
+                    field=None,
+                    source=ErrorSource.SAP,
+                    code="sap_validation",
+                    sap_code=e.sap_code,
+                    message=str(e),
+                ))
+                continue
+            except SAPError as e:
+                errors.append(RowError(
+                    row=row_number,
+                    field=None,
+                    source=ErrorSource.SAP,
+                    code="sap_error",
+                    message=f"Error SAP inesperado: {e}",
+                ))
+                continue
+
+            if business_errors:
+                errors.append(RowError(
+                    row=row_number,
+                    field=None,
+                    source=ErrorSource.API,
+                    code="business_validation",
+                    message=" | ".join(business_errors),
+                ))
+                continue
+
+            valid_rows += 1
+
+        return PreviewResult(
+            filename=filename,
+            total_rows=total_rows,
+            valid_rows=valid_rows,
+            error_rows=total_rows - valid_rows,
             errors=errors,
         )
 
@@ -188,6 +340,7 @@ class BaseUploadHandler(ABC, Generic[SchemaT]):
         row: SchemaT,
         row_number: int,
         errors: list[RowError],
+        capture: "_AuditCapture | None" = None,
     ) -> bool:
         try:
             await self.sync_row(sap, row)
@@ -201,6 +354,8 @@ class BaseUploadHandler(ABC, Generic[SchemaT]):
                 code=e.code,
                 message=e.message,
             ))
+            if capture is not None:
+                capture.error_message = e.message
             return False
         except SAPValidationError as e:
             errors.append(RowError(
@@ -211,6 +366,8 @@ class BaseUploadHandler(ABC, Generic[SchemaT]):
                 sap_code=e.sap_code,
                 message=str(e),
             ))
+            if capture is not None:
+                capture.error_message = str(e)
             return False
         except SAPError as e:
             errors.append(RowError(
@@ -220,6 +377,8 @@ class BaseUploadHandler(ABC, Generic[SchemaT]):
                 code="sap_error",
                 message=f"Error SAP inesperado: {e}",
             ))
+            if capture is not None:
+                capture.error_message = f"Error SAP inesperado: {e}"
             return False
 
     def _resolve_status(self, success: int, errors: int, total: int) -> BatchStatus:
@@ -240,6 +399,7 @@ class BaseUploadHandler(ABC, Generic[SchemaT]):
         error_rows: int,
         status: BatchStatus,
         errors: list[RowError],
+        audits: list["_AuditCapture"] | None = None,
     ) -> UploadBatch:
         batch = UploadBatch(
             username=username,
@@ -263,6 +423,19 @@ class BaseUploadHandler(ABC, Generic[SchemaT]):
                 error_code=err.code,
                 sap_code=err.sap_code,
                 error_message=err.message,
+            ))
+
+        for capture in audits or []:
+            db.add(OperationAudit(
+                batch_id=batch.id,
+                row_index=capture.row_index,
+                username=username,
+                sap_module=self.sap_module,
+                resource_id=capture.resource_id,
+                fields_before=capture.fields_before,
+                fields_after=capture.fields_after,
+                status=capture.status,
+                error_message=capture.error_message,
             ))
 
         db.commit()

@@ -22,8 +22,11 @@ class ActivarDesactivarHandler(BaseUploadHandler[ActivarDesactivarRow]):
     def sap_module(self) -> str:
         return "socios_negocio/datos_maestros/activar_desactivar"
 
+    async def validate(self, sap: SAPClient, row: ActivarDesactivarRow) -> list[str]:
+        return await ActivarDesactivarValidator.validate(sap, row)
+
     async def sync_row(self, sap: SAPClient, row: ActivarDesactivarRow) -> None:
-        business_errors = await ActivarDesactivarValidator.validate(sap, row)
+        business_errors = await self.validate(sap, row)
         if business_errors:
             raise RowValidationError(
                 " | ".join(business_errors),
@@ -32,3 +35,19 @@ class ActivarDesactivarHandler(BaseUploadHandler[ActivarDesactivarRow]):
             )
 
         await ActivarDesactivarSAPService.update(sap, row)
+
+    # ── Auditoría antes/después ───────────────────────────────────────────────
+
+    def audit_resource_id(self, row: ActivarDesactivarRow) -> str:
+        return row.CardCode
+
+    async def fetch_before(self, sap: SAPClient, row: ActivarDesactivarRow) -> dict:
+        data = await sap.get(
+            f"BusinessPartners('{row.CardCode}')",
+            params={"$select": "Valid,Frozen"},
+        )
+        return {"Valid": data.get("Valid"), "Frozen": data.get("Frozen")}
+
+    def build_after(self, row: ActivarDesactivarRow) -> dict:
+        valid, frozen = row.resolved_flags()
+        return {"Valid": valid, "Frozen": frozen}

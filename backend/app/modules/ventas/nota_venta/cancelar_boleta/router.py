@@ -22,8 +22,11 @@ class CancelarBoletaHandler(BaseUploadHandler[CancelarBoletaRow]):
     def sap_module(self) -> str:
         return "ventas/nota_venta/cancelar_boleta"
 
+    async def validate(self, sap: SAPClient, row: CancelarBoletaRow) -> list[str]:
+        return await CancelarBoletaValidator.validate(sap, row)
+
     async def sync_row(self, sap: SAPClient, row: CancelarBoletaRow) -> None:
-        business_errors = await CancelarBoletaValidator.validate(sap, row)
+        business_errors = await self.validate(sap, row)
         if business_errors:
             raise RowValidationError(
                 " | ".join(business_errors),

@@ -20,8 +20,11 @@ class QuitarFolioHandler(BaseUploadHandler[QuitarFolioRow]):
     def sap_module(self) -> str:
         return "ventas/nota_venta/quitar_folio"
 
+    async def validate(self, sap: SAPClient, row: QuitarFolioRow) -> list[str]:
+        return await QuitarFolioValidator.validate(sap, row)
+
     async def sync_row(self, sap: SAPClient, row: QuitarFolioRow) -> None:
-        business_errors = await QuitarFolioValidator.validate(sap, row)
+        business_errors = await self.validate(sap, row)
         if business_errors:
             raise RowValidationError(
                 " | ".join(business_errors),

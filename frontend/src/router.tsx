@@ -2,6 +2,7 @@ import { createBrowserRouter } from "react-router-dom"
 
 import { AppShell } from "@/components/layout/AppShell"
 import { RequireAuth } from "@/components/auth/RequireAuth"
+import { AuditPage } from "@/pages/audit"
 import { DatosMaestrosPage } from "@/pages/datos-maestros"
 import { GestionClientesPage } from "@/pages/gestion-clientes"
 import { HomePage } from "@/pages/home"
@@ -34,6 +35,7 @@ export const router = createBrowserRouter([
       { path: "uploads/nota-venta", element: <NotaVentaPage /> },
       { path: "uploads/entrega", element: <EntregaPage /> },
       { path: "uploads/:slug", element: <ModulePlaceholderPage /> },
+      { path: "audit", element: <AuditPage /> },
     ],
   },
   {

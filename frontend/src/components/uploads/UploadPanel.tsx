@@ -6,17 +6,31 @@ import { Label } from "@/components/atoms/Label"
 import { Button } from "@/components/ui/button"
 import { ErrorReport } from "@/components/uploads/ErrorReport"
 import { UploadDropzone } from "@/components/uploads/UploadDropzone"
-import { UploadPreview } from "@/components/uploads/UploadPreview"
+import {
+  UploadPreview,
+  type DryRunState,
+} from "@/components/uploads/UploadPreview"
 import { UploadSummary } from "@/components/uploads/UploadSummary"
-import { previewExcel, type ExcelPreview } from "@/lib/excel"
+import {
+  previewExcel,
+  validateRequiredCells,
+  type ExcelPreview,
+  type MissingRequiredRow,
+} from "@/lib/excel"
 import type { ModuleSchema } from "@/lib/modules"
-import { uploadModule } from "@/lib/uploads"
+import { previewModule, uploadModule } from "@/lib/uploads"
 import { useSapHealth } from "@/lib/useSapHealth"
 import type { UploadResult } from "@/types"
 
 type Phase =
   | { kind: "idle" }
-  | { kind: "picked"; file: File; preview: ExcelPreview }
+  | {
+      kind: "picked"
+      file: File
+      preview: ExcelPreview
+      missingRequired: MissingRequiredRow[]
+      dryRun: DryRunState
+    }
   | { kind: "uploading"; filename: string }
   | { kind: "done"; result: UploadResult }
   | { kind: "failed"; message: string }
@@ -35,7 +49,40 @@ export function UploadPanel({ apiPath, schema }: UploadPanelProps) {
   const handleFile = async (file: File) => {
     try {
       const preview = await previewExcel(file)
-      setPhase({ kind: "picked", file, preview })
+      const missingRequired = schema
+        ? await validateRequiredCells(file, schema.requiredColumns)
+        : []
+      const initialDryRun: DryRunState =
+        missingRequired.length === 0 ? { status: "running" } : { status: "idle" }
+      setPhase({
+        kind: "picked",
+        file,
+        preview,
+        missingRequired,
+        dryRun: initialDryRun,
+      })
+
+      if (missingRequired.length === 0) {
+        try {
+          const result = await previewModule(apiPath, file)
+          setPhase((prev) =>
+            prev.kind === "picked" && prev.file === file
+              ? { ...prev, dryRun: { status: "done", result } }
+              : prev,
+          )
+        } catch (err) {
+          const message = isAxiosError(err)
+            ? err.response?.data?.message ?? err.message
+            : err instanceof Error
+              ? err.message
+              : "Error desconocido."
+          setPhase((prev) =>
+            prev.kind === "picked" && prev.file === file
+              ? { ...prev, dryRun: { status: "failed", message } }
+              : prev,
+          )
+        }
+      }
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "No se pudo leer el archivo."
@@ -76,6 +123,8 @@ export function UploadPanel({ apiPath, schema }: UploadPanelProps) {
         <UploadPreview
           preview={phase.preview}
           schema={schema}
+          missingRequired={phase.missingRequired}
+          dryRun={phase.dryRun}
           onConfirm={() => submit(phase.file)}
           onCancel={reset}
         />

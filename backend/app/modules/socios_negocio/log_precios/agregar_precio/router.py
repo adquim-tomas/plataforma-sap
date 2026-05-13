@@ -22,8 +22,11 @@ class AgregarPrecioHandler(BaseUploadHandler[AgregarPrecioRow]):
     def sap_module(self) -> str:
         return "socios_negocio/log_precios/agregar_precio"
 
+    async def validate(self, sap: SAPClient, row: AgregarPrecioRow) -> list[str]:
+        return await AgregarPrecioValidator.validate(sap, row)
+
     async def sync_row(self, sap: SAPClient, row: AgregarPrecioRow) -> None:
-        business_errors = await AgregarPrecioValidator.validate(sap, row)
+        business_errors = await self.validate(sap, row)
         if business_errors:
             raise RowValidationError(
                 " | ".join(business_errors),

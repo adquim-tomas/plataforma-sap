@@ -22,8 +22,11 @@ class CambioCondPagoHandler(BaseUploadHandler[CambioCondPagoRow]):
     def sap_module(self) -> str:
         return "socios_negocio/datos_maestros/cambio_cond_pago"
 
+    async def validate(self, sap: SAPClient, row: CambioCondPagoRow) -> list[str]:
+        return await CambioCondPagoValidator.validate(sap, row)
+
     async def sync_row(self, sap: SAPClient, row: CambioCondPagoRow) -> None:
-        business_errors = await CambioCondPagoValidator.validate(sap, row)
+        business_errors = await self.validate(sap, row)
         if business_errors:
             raise RowValidationError(
                 " | ".join(business_errors),
@@ -32,3 +35,30 @@ class CambioCondPagoHandler(BaseUploadHandler[CambioCondPagoRow]):
             )
 
         await CambioCondPagoSAPService.update(sap, row)
+
+    # ── Auditoría antes/después ───────────────────────────────────────────────
+
+    def audit_resource_id(self, row: CambioCondPagoRow) -> str:
+        return f"{row.CardCode}/{row.AddressName}"
+
+    async def fetch_before(self, sap: SAPClient, row: CambioCondPagoRow) -> dict | None:
+        bp = await sap.get(
+            f"BusinessPartners('{row.CardCode}')",
+            params={"$select": "BPAddresses"},
+        )
+        for addr in bp.get("BPAddresses", []):
+            if (
+                addr.get("AddressName") == row.AddressName
+                and addr.get("AddressType") == row.AddressType
+            ):
+                return {
+                    "U_LMM_CondPago": addr.get("U_LMM_CondPago"),
+                    "U_LMM_DescPago": addr.get("U_LMM_DescPago"),
+                }
+        return None
+
+    def build_after(self, row: CambioCondPagoRow) -> dict:
+        return {
+            "U_LMM_CondPago": row.CondPago,
+            "U_LMM_DescPago": row.DescPago,
+        }

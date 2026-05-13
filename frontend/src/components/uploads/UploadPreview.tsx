@@ -1,13 +1,28 @@
+import { HeartbeatDot } from "@/components/atoms/HeartbeatDot"
 import { Label } from "@/components/atoms/Label"
 import { StatusPill } from "@/components/atoms/StatusPill"
 import { Button } from "@/components/ui/button"
-import { CLEAR_SENTINEL, isClearSentinel, type ExcelPreview } from "@/lib/excel"
+import {
+  CLEAR_SENTINEL,
+  isClearSentinel,
+  type ExcelPreview,
+  type MissingRequiredRow,
+} from "@/lib/excel"
 import type { ModuleSchema } from "@/lib/modules"
 import { cn } from "@/lib/utils"
+import type { PreviewResult } from "@/types"
+
+export type DryRunState =
+  | { status: "idle" }
+  | { status: "running" }
+  | { status: "done"; result: PreviewResult }
+  | { status: "failed"; message: string }
 
 interface UploadPreviewProps {
   preview: ExcelPreview
   schema?: ModuleSchema
+  missingRequired?: MissingRequiredRow[]
+  dryRun?: DryRunState
   onConfirm: () => void
   onCancel: () => void
   isSubmitting?: boolean
@@ -29,6 +44,8 @@ function formatCell(value: unknown): string {
 export function UploadPreview({
   preview,
   schema,
+  missingRequired = [],
+  dryRun = { status: "idle" },
   onConfirm,
   onCancel,
   isSubmitting = false,
@@ -36,6 +53,7 @@ export function UploadPreview({
   const missing =
     schema?.requiredColumns.filter((c) => !preview.headers.includes(c)) ?? []
   const hasMissing = missing.length > 0
+  const hasEmptyRequired = missingRequired.length > 0
 
   const remainingRows = Math.max(0, preview.totalRows - preview.rows.length)
 
@@ -159,6 +177,126 @@ export function UploadPreview({
         </div>
       )}
 
+      {/* Filas con campos obligatorios vacíos */}
+      {hasEmptyRequired && (
+        <div className="border border-fail/40 bg-background">
+          <div className="flex items-center justify-between border-b border-fail/30 bg-elev px-3 py-2">
+            <Label className="text-fail">
+              campos obligatorios vacíos · {missingRequired.length} fila
+              {missingRequired.length === 1 ? "" : "s"}
+            </Label>
+            <span className="text-[0.7rem] text-muted-foreground">
+              corrige el Excel y vuelve a subirlo
+            </span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-[0.78rem]">
+              <thead className="border-b border-border-strong bg-elev">
+                <tr>
+                  <th className="border-r border-border px-3 py-2 text-left">
+                    <Label>fila</Label>
+                  </th>
+                  <th className="px-3 py-2 text-left">
+                    <Label>columnas faltantes</Label>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {missingRequired.map((m) => (
+                  <tr
+                    key={m.row}
+                    className="border-b border-border last:border-b-0 even:bg-elev/40"
+                  >
+                    <td className="border-r border-border px-3 py-1.5 tabular-nums">
+                      {m.row}
+                    </td>
+                    <td className="px-3 py-1.5 text-fail">
+                      {m.missing.join(", ")}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Dry-run contra SAP */}
+      {dryRun.status === "running" && (
+        <div className="flex items-center gap-2 border border-border bg-elev px-3 py-2">
+          <HeartbeatDot kind="pending" />
+          <span className="text-[0.78rem] text-muted-foreground">
+            validando contra SAP…
+          </span>
+        </div>
+      )}
+      {dryRun.status === "failed" && (
+        <div className="border border-fail/40 bg-elev px-3 py-2">
+          <Label className="text-fail">validación contra SAP falló</Label>
+          <p className="mt-1 text-[0.78rem]">{dryRun.message}</p>
+        </div>
+      )}
+      {dryRun.status === "done" && dryRun.result.errors.length > 0 && (
+        <div className="border border-fail/40 bg-background">
+          <div className="flex items-center justify-between border-b border-fail/30 bg-elev px-3 py-2">
+            <Label className="text-fail">
+              filas que SAP rechazará ·{" "}
+              <span className="tabular-nums">{dryRun.result.error_rows}</span>{" "}
+              de{" "}
+              <span className="tabular-nums">{dryRun.result.total_rows}</span>
+            </Label>
+            <span className="text-[0.7rem] text-muted-foreground">
+              estas filas no se procesarán; las{" "}
+              <span className="tabular-nums">{dryRun.result.valid_rows}</span>{" "}
+              válidas sí
+            </span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-[0.78rem]">
+              <thead className="border-b border-border-strong bg-elev">
+                <tr>
+                  <th className="border-r border-border px-3 py-2 text-left">
+                    <Label>fila</Label>
+                  </th>
+                  <th className="border-r border-border px-3 py-2 text-left">
+                    <Label>campo</Label>
+                  </th>
+                  <th className="px-3 py-2 text-left">
+                    <Label>motivo</Label>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {dryRun.result.errors.map((e, idx) => (
+                  <tr
+                    key={`${e.row}-${idx}`}
+                    className="border-b border-border last:border-b-0 even:bg-elev/40"
+                  >
+                    <td className="border-r border-border px-3 py-1.5 tabular-nums">
+                      {e.row}
+                    </td>
+                    <td className="border-r border-border px-3 py-1.5 text-muted-foreground">
+                      {e.field ?? "—"}
+                    </td>
+                    <td className="px-3 py-1.5 text-fail">{e.message}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+      {dryRun.status === "done" && dryRun.result.errors.length === 0 && (
+        <div className="flex items-center gap-2 border border-ok/40 bg-elev px-3 py-2">
+          <HeartbeatDot kind="ok" still />
+          <span className="text-[0.78rem]">
+            <span className="tabular-nums">{dryRun.result.valid_rows}</span> de{" "}
+            <span className="tabular-nums">{dryRun.result.total_rows}</span>{" "}
+            filas validadas contra SAP — sin errores
+          </span>
+        </div>
+      )}
+
       {/* Acciones */}
       <div className="flex items-center justify-between gap-3 border-t border-border pt-3">
         <Button
@@ -171,7 +309,12 @@ export function UploadPreview({
         </Button>
         <Button
           onClick={onConfirm}
-          disabled={hasMissing || isSubmitting || preview.totalRows === 0}
+          disabled={
+            hasMissing ||
+            hasEmptyRequired ||
+            isSubmitting ||
+            preview.totalRows === 0
+          }
           size="sm"
         >
           confirmar y subir

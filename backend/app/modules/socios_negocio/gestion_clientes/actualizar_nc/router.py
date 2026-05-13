@@ -22,8 +22,11 @@ class ActualizarNcHandler(BaseUploadHandler[ActualizarNcRow]):
     def sap_module(self) -> str:
         return "socios_negocio/gestion_clientes/actualizar_nc"
 
+    async def validate(self, sap: SAPClient, row: ActualizarNcRow) -> list[str]:
+        return await ActualizarNcValidator.validate(sap, row)
+
     async def sync_row(self, sap: SAPClient, row: ActualizarNcRow) -> None:
-        business_errors = await ActualizarNcValidator.validate(sap, row)
+        business_errors = await self.validate(sap, row)
         if business_errors:
             raise RowValidationError(
                 " | ".join(business_errors),

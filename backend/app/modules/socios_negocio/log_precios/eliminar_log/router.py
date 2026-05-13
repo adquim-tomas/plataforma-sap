@@ -22,8 +22,11 @@ class EliminarLogHandler(BaseUploadHandler[EliminarLogRow]):
     def sap_module(self) -> str:
         return "socios_negocio/log_precios/eliminar_log"
 
+    async def validate(self, sap: SAPClient, row: EliminarLogRow) -> list[str]:
+        return await EliminarLogValidator.validate(sap, row)
+
     async def sync_row(self, sap: SAPClient, row: EliminarLogRow) -> None:
-        business_errors = await EliminarLogValidator.validate(sap, row)
+        business_errors = await self.validate(sap, row)
         if business_errors:
             raise RowValidationError(
                 " | ".join(business_errors),

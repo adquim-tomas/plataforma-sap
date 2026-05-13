@@ -22,8 +22,11 @@ class ActualizarMargenTPHandler(BaseUploadHandler[ActualizarMargenTPRow]):
     def sap_module(self) -> str:
         return "socios_negocio/gestion_clientes/actualizar_margen_tp"
 
+    async def validate(self, sap: SAPClient, row: ActualizarMargenTPRow) -> list[str]:
+        return await ActualizarMargenTPValidator.validate(sap, row)
+
     async def sync_row(self, sap: SAPClient, row: ActualizarMargenTPRow) -> None:
-        business_errors = await ActualizarMargenTPValidator.validate(sap, row)
+        business_errors = await self.validate(sap, row)
         if business_errors:
             raise RowValidationError(
                 " | ".join(business_errors),

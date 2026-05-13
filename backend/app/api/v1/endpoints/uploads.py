@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.core.sap_instance import sap_service
-from app.modules.shared.base_router import UploadResult
+from app.modules.shared.base_router import PreviewResult, UploadResult
 from app.modules.shared.base_schema import InvalidFileError, ModuleNotFoundError
 from app.schemas.auth import TokenPayload
 
@@ -99,6 +99,44 @@ HANDLERS = {
 }
 
 
+def _resolve_handler(module_path: str):
+    handler = HANDLERS.get(module_path)
+    if not handler:
+        raise ModuleNotFoundError(
+            f"Acción '{module_path}' no existe o no está habilitada.",
+        )
+    return handler
+
+
+def _ensure_excel(file: UploadFile) -> None:
+    if not file.filename or not file.filename.endswith((".xlsx", ".xls")):
+        raise InvalidFileError("Solo se aceptan archivos Excel (.xlsx, .xls).")
+
+
+@router.post("/preview/{module_path:path}", response_model=PreviewResult)
+async def preview_file(
+    module_path: str,
+    file: UploadFile,
+    _user: TokenPayload = Depends(get_current_user),
+) -> PreviewResult:
+    """
+    Dry-run del pipeline: parsea + valida (Pydantic + validaciones de negocio
+    contra SAP) y devuelve los errores. NO escribe en SAP ni en BD.
+
+    El operador lo usa antes de confirmar el upload para detectar problemas
+    (CardCodes inexistentes, zonales no encontrados, etc.) sin incurrir en
+    una carga parcial.
+    """
+    handler = _resolve_handler(module_path)
+    _ensure_excel(file)
+    file_bytes = await file.read()
+    return await handler.validate_only(
+        file_bytes=file_bytes,
+        filename=file.filename or "",
+        sap=sap_service,
+    )
+
+
 @router.post("/{module_path:path}", response_model=UploadResult)
 async def upload_file(
     module_path: str,
@@ -112,15 +150,8 @@ async def upload_file(
     Ejemplos:
       POST /uploads/socios_negocio/datos_maestros/activar_desactivar
     """
-    handler = HANDLERS.get(module_path)
-    if not handler:
-        raise ModuleNotFoundError(
-            f"Acción '{module_path}' no existe o no está habilitada.",
-        )
-
-    if not file.filename or not file.filename.endswith((".xlsx", ".xls")):
-        raise InvalidFileError("Solo se aceptan archivos Excel (.xlsx, .xls).")
-
+    handler = _resolve_handler(module_path)
+    _ensure_excel(file)
     file_bytes = await file.read()
 
     return await handler.process(

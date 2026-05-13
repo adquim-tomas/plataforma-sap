@@ -22,8 +22,11 @@ class ActualizarEspHandler(BaseUploadHandler[ActualizarEspRow]):
     def sap_module(self) -> str:
         return "socios_negocio/gestion_clientes/actualizar_esp"
 
+    async def validate(self, sap: SAPClient, row: ActualizarEspRow) -> list[str]:
+        return await ActualizarEspValidator.validate(sap, row)
+
     async def sync_row(self, sap: SAPClient, row: ActualizarEspRow) -> None:
-        business_errors = await ActualizarEspValidator.validate(sap, row)
+        business_errors = await self.validate(sap, row)
         if business_errors:
             raise RowValidationError(
                 " | ".join(business_errors),

@@ -20,4 +20,9 @@ class CrearLogValidator:
                 "para agregar una línea a un log existente usar 'Agregar precio'."
             )
 
+        if not await SAPValidator.item_code_exists(sap, row.U_NX_CodArt):
+            errors.append(
+                f"Artículo '{row.U_NX_CodArt}' no existe en SAP."
+            )
+
         return errors

@@ -20,8 +20,11 @@ class CambioLibroHandler(BaseUploadHandler[CambioLibroRow]):
     def sap_module(self) -> str:
         return "ventas/nota_venta/cambio_libro"
 
+    async def validate(self, sap: SAPClient, row: CambioLibroRow) -> list[str]:
+        return await CambioLibroValidator.validate(sap, row)
+
     async def sync_row(self, sap: SAPClient, row: CambioLibroRow) -> None:
-        business_errors = await CambioLibroValidator.validate(sap, row)
+        business_errors = await self.validate(sap, row)
         if business_errors:
             raise RowValidationError(
                 " | ".join(business_errors),

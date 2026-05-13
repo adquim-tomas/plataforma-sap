@@ -54,6 +54,39 @@ export interface UploadResult {
   errors: RowError[]
 }
 
+export interface PreviewResult {
+  filename: string
+  total_rows: number
+  valid_rows: number
+  error_rows: number
+  errors: RowError[]
+}
+
+// ── Bitácora (`backend/app/api/v1/endpoints/audit.py`) ───────────────────────
+
+export type OperationStatus = "ok" | "fail"
+
+export interface OperationAuditRow {
+  id: number
+  batch_id: number
+  row_index: number
+  username: string
+  sap_module: string
+  resource_id: string | null
+  fields_before: Record<string, unknown> | null
+  fields_after: Record<string, unknown> | null
+  status: OperationStatus
+  error_message: string | null
+  created_at: string
+}
+
+export interface OperationAuditPage {
+  total: number
+  limit: number
+  offset: number
+  items: OperationAuditRow[]
+}
+
 // ── Health (`backend/app/api/v1/endpoints/health.py`) ────────────────────────
 
 export type SapHealthCode = "ok" | "auth" | "connection" | "timeout" | "error"
