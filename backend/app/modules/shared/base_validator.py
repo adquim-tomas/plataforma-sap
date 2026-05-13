@@ -74,6 +74,28 @@ class SAPValidator:
             return False
 
     @staticmethod
+    async def zonal_exists(sap: SAPClient, zonal_name: str) -> bool:
+        """
+        Verifica que exista un SalesPerson activo de tipo ZONAL con ese nombre.
+        Equivalente a `SalePerson.checkZonal` en classsocio.py:397 de Pedro:
+        filtra por Active='tYES' y U_RHD_TipoVendedor='ZONAL'.
+        """
+        try:
+            escaped = zonal_name.replace("'", "''")
+            results = await sap.get_all(
+                "SalesPersons",
+                filters=(
+                    f"Active eq 'tYES' and "
+                    f"U_RHD_TipoVendedor eq 'ZONAL' and "
+                    f"SalesEmployeeName eq '{escaped}'"
+                ),
+                select=["SalesEmployeeCode"],
+            )
+            return len(results) > 0
+        except Exception:
+            return False
+
+    @staticmethod
     async def nx_gcliente_exists(sap: SAPClient, code: str) -> bool:
         """Verifica que un header NX_GCLIENTE (gestión de clientes) exista en SAP."""
         try:

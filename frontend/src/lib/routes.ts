@@ -77,6 +77,69 @@ export interface ModuleEntry {
 
 // ── Help: definidos antes del array para permitir derivar schemas ────────────
 
+const BLOQUEO_COFASE_HELP: ActionHelp = {
+  description:
+    "Bloquea masivamente socios de negocio por retiro de cobertura COFASE. Desactiva el socio, lo congela, fuerza el tipo de línea a 'Sin línea', pone los límites de crédito en 0, y deja una constancia con la fecha de hoy en el comentario libre del SN.",
+  columns: [
+    {
+      name: "CardCode",
+      type: "str",
+      required: true,
+      description: "Identificador SAP del socio. CN+RUT para clientes, PN+RUT para proveedores.",
+      example: "CN12345678-9",
+    },
+  ],
+  businessRules: [
+    "Solo se entrega el CardCode — todo lo demás lo aplica el servidor automáticamente.",
+    "El servidor aplica: Valid=tNO, Frozen=tYES, U_tipo_linea='Sin línea', CreditLimit=0, MaxCommitment=0.",
+    "Al comentario libre (FreeText) se le appendea una línea con la fecha de hoy en formato DD-MM-YYYY seguida de 'COBERTURA RETIRADA'. El comentario previo se preserva.",
+    "El CardCode debe existir en SAP. Esta acción no crea socios nuevos.",
+  ],
+  templateFilename: "bloqueo_cofase_template.xlsx",
+}
+
+const CAMBIO_CARTERA_HELP: ActionHelp = {
+  description:
+    "Reasigna la cartera (zonal responsable) de una sucursal del cliente. Cambia el campo U_LMM_ZN_Encargado de la dirección indicada en BPAddresses.",
+  columns: [
+    {
+      name: "CardCode",
+      type: "str",
+      required: true,
+      description: "Identificador SAP del socio. CN+RUT para clientes, PN+RUT para proveedores.",
+      example: "CN12345678-9",
+    },
+    {
+      name: "AddressName",
+      type: "str",
+      required: true,
+      description: "Nombre de la sucursal — debe coincidir con AddressName de la entrada en BPAddresses del socio.",
+      example: "Casa Matriz",
+    },
+    {
+      name: "AddressType",
+      type: "enum",
+      required: true,
+      description: "Tipo de dirección. bo_ShipTo para sucursal, bo_BillTo para fiscal.",
+      example: "bo_ShipTo",
+    },
+    {
+      name: "Zonal",
+      type: "str",
+      required: true,
+      description: "Nombre completo del zonal a asignar — debe ser un SalesEmployee activo de tipo ZONAL en SAP.",
+      example: "Juan Perez",
+    },
+  ],
+  businessRules: [
+    "El CardCode debe existir en SAP.",
+    "AddressName + AddressType deben identificar a una sucursal existente del socio (matchea contra BPAddresses).",
+    "Zonal debe ser un vendedor activo (Active=tYES) y de tipo ZONAL (U_RHD_TipoVendedor=ZONAL).",
+    "El cambio se aplica solo a la sucursal indicada — las otras direcciones del socio no se tocan.",
+  ],
+  templateFilename: "cambio_cartera_template.xlsx",
+}
+
 const ACTIVAR_DESACTIVAR_HELP: ActionHelp = {
   description:
     "Activa o desactiva en SAP a un socio de negocio que ya existe. Cambia los flags Valid y Frozen del BusinessPartner.",
@@ -129,6 +192,20 @@ export const MODULES: ModuleEntry[] = [
         apiPath: "socios_negocio/datos_maestros/activar_desactivar",
         help: ACTIVAR_DESACTIVAR_HELP,
         schema: schemaFromHelp(ACTIVAR_DESACTIVAR_HELP),
+      },
+      {
+        id: "cambio-cartera",
+        title: "Cambio de cartera",
+        apiPath: "socios_negocio/datos_maestros/cambio_cartera",
+        help: CAMBIO_CARTERA_HELP,
+        schema: schemaFromHelp(CAMBIO_CARTERA_HELP),
+      },
+      {
+        id: "bloqueo-cofase",
+        title: "Bloqueo COFASE",
+        apiPath: "socios_negocio/datos_maestros/bloqueo_cofase",
+        help: BLOQUEO_COFASE_HELP,
+        schema: schemaFromHelp(BLOQUEO_COFASE_HELP),
       },
     ],
   },

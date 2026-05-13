@@ -44,7 +44,7 @@ parse Excel → validate Pydantic → insert SAP → save BD
 |---------|-----------|
 | `base_schema.py` | `RowBase`, `DocumentLineBase`, `APIError`, `RowValidationError`, `ErrorSource` |
 | `base_router.py` | `BaseUploadHandler`, `UploadResult`, `RowError` |
-| `base_validator.py` | `SAPValidator.card_code_exists` / `item_code_exists` / `account_code_exists` / `warehouse_exists` / `sales_person_exists` / `nx_gcliente_exists` / `nx_gcliente_line_exists` / `nx_logprecios_exists` |
+| `base_validator.py` | `SAPValidator.card_code_exists` / `item_code_exists` / `account_code_exists` / `warehouse_exists` / `sales_person_exists` / `zonal_exists` / `nx_gcliente_exists` / `nx_gcliente_line_exists` / `nx_logprecios_exists` |
 
 ### Estructura por Módulo
 
@@ -107,12 +107,28 @@ Cada fila es un endpoint concreto. Solo se crean acciones que tienen respaldo co
 | Módulo SAP | Acción | Endpoint | Operación SAP | Origen |
 |------------|--------|----------|---------------|--------|
 | Datos Maestros (BusinessPartners) | Activar / Desactivar | `socios_negocio/datos_maestros/activar_desactivar` | PATCH `BusinessPartners('{CardCode}')` con `Valid` + `Frozen` | `Conexion_Service_Layer_SAP/clases/classsocio.py::SN.update_SN_activo` |
+| Datos Maestros (BusinessPartners) | Cambio de cartera | `socios_negocio/datos_maestros/cambio_cartera` | PATCH `BusinessPartners('{CardCode}')` con `BPAddresses[{RowNum}].U_LMM_ZN_Encargado` | `Conexion_Service_Layer_SAP/clases/classsocio.py::SN.update_zonal_sucursal` + `update_many_zonal_sucursal` |
+| Datos Maestros (BusinessPartners) | Bloqueo COFASE | `socios_negocio/datos_maestros/bloqueo_cofase` | PATCH `BusinessPartners('{CardCode}')` con `Valid=tNO`+`Frozen=tYES`+`U_tipo_linea`+`CreditLimit=0`+`MaxCommitment=0`+`FreeText` apendado | `Conexion_Service_Layer_SAP/clases/classsocio.py::SN.bloqueo_masivo_COFASE` + `update_many_bloqueo_cofase` |
 
 #### Datos Maestros — Activar / Desactivar
 
 - Campos: `CardCode` (obligatorio) + **uno solo** de `Valid` / `Frozen` con `tYES` o `tNO`.
 - El opuesto se infiere y se incluye en el PATCH (SAP requiere ambos para que el cambio de estado tome efecto — ver `update_SN_activo` en classsocio.py).
 - Schema con `extra="forbid"`: cualquier columna adicional es rechazada por Pydantic.
+- Validador SAP: `card_code_exists`.
+
+#### Datos Maestros — Cambio de cartera
+
+- Campos: `CardCode`, `AddressName`, `AddressType` (`bo_ShipTo` o `bo_BillTo`), `Zonal` — todos obligatorios. Schema con `extra="forbid"`.
+- El operador entrega el **nombre** de la sucursal (`AddressName`); el servicio hace `GET BusinessPartners('{CardCode}')?$select=BPAddresses` para resolver el `RowNum` correspondiente y luego envía un PATCH con una sola entrada en `BPAddresses` que SAP B1 upserta por `RowNum` — sin pisar otras direcciones (mismo patrón que el legacy de Pedro).
+- `Zonal` se valida contra `SalesPersons` filtrando `Active eq 'tYES' and U_RHD_TipoVendedor eq 'ZONAL'` (nuevo helper `SAPValidator.zonal_exists`).
+- Validadores SAP: `card_code_exists`, `zonal_exists`. Si la sucursal no existe en `BPAddresses`, el servicio lanza `RowValidationError` con `code="address_not_found"`.
+
+#### Datos Maestros — Bloqueo COFASE
+
+- Único campo aceptado: `CardCode`. Schema con `extra="forbid"`.
+- Todos los demás cambios son **server-side fijos**, sin parámetros: `Valid=tNO`, `Frozen=tYES`, `U_tipo_linea="Sin línea"`, `CreditLimit=0`, `MaxCommitment=0`.
+- El servicio hace `GET BusinessPartners('{CardCode}')?$select=FreeText`, appendea `"\\r{DD-MM-YYYY} COBERTURA RETIRADA"` (fecha actual del servidor) al texto existente y lo incluye en el PATCH. El comentario previo se preserva.
 - Validador SAP: `card_code_exists`.
 
 ### Documentos SAP estándar — POST vs PATCH
@@ -132,6 +148,8 @@ Los módulos UDO (Datos Maestros, Gestión de Clientes, Log de Precios) usan **P
 | RowBase + DocumentLineBase | ✅ | shared schemas |
 | SAPValidator.card_code_exists | ✅ | shared validator |
 | **Datos Maestros — Activar / Desactivar** | ✅ | PATCH `BusinessPartners` con `Valid`+`Frozen` (Pedro-grounded en `update_SN_activo`) |
+| **Datos Maestros — Cambio de cartera** | ✅ | PATCH `BPAddresses[RowNum].U_LMM_ZN_Encargado` (Pedro-grounded en `update_zonal_sucursal`) |
+| **Datos Maestros — Bloqueo COFASE** | ✅ | PATCH masivo con valores fijos + apend de fecha en `FreeText` (Pedro-grounded en `bloqueo_masivo_COFASE`) |
 | Gestión de Clientes | ⬜ | sin acciones Pedro-grounded definidas todavía |
 | Log de Precios | ⬜ | sin acciones Pedro-grounded definidas todavía |
 | Orden de Compra | ⬜ | sin acciones Pedro-grounded definidas todavía |

@@ -14,6 +14,12 @@ from app.schemas.auth import TokenPayload
 from app.modules.socios_negocio.datos_maestros.activar_desactivar.router import (
     ActivarDesactivarHandler,
 )
+from app.modules.socios_negocio.datos_maestros.bloqueo_cofase.router import (
+    BloqueoCofaseHandler,
+)
+from app.modules.socios_negocio.datos_maestros.cambio_cartera.router import (
+    CambioCarteraHandler,
+)
 
 router = APIRouter(prefix="/uploads", tags=["uploads"])
 logger = logging.getLogger(__name__)
@@ -24,6 +30,8 @@ logger = logging.getLogger(__name__)
 # fuera del allowlist de la acción seleccionada.
 HANDLERS = {
     "socios_negocio/datos_maestros/activar_desactivar": ActivarDesactivarHandler(),
+    "socios_negocio/datos_maestros/cambio_cartera":     CambioCarteraHandler(),
+    "socios_negocio/datos_maestros/bloqueo_cofase":     BloqueoCofaseHandler(),
 }
 
 
