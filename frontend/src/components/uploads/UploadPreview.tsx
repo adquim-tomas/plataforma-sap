@@ -2,7 +2,7 @@ import { Label } from "@/components/atoms/Label"
 import { StatusPill } from "@/components/atoms/StatusPill"
 import { Button } from "@/components/ui/button"
 import type { ExcelPreview } from "@/lib/excel"
-import type { ModuleSchema } from "@/lib/routes"
+import type { ModuleSchema } from "@/lib/modules"
 import { cn } from "@/lib/utils"
 
 interface UploadPreviewProps {

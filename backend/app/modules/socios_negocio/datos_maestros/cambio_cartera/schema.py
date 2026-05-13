@@ -18,7 +18,7 @@ class CambioCarteraRow(RowBase):
     Columnas aceptadas — y SOLO estas:
       - CardCode    (obligatorio) — identificador SAP del socio
       - AddressName (obligatorio) — nombre de la sucursal dentro de BPAddresses
-      - AddressType (obligatorio) — bo_ShipTo (sucursal) o bo_BillTo (fiscal)
+      - AddressType (obligatorio) — bo_ShipTo (sucursal despacho) o bo_BillTo (sucursal fiscal)
       - Zonal       (obligatorio) — SalesEmployeeName del vendedor zonal a asignar
     """
     model_config = ConfigDict(

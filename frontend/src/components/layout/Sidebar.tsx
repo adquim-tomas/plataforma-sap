@@ -9,7 +9,7 @@ import {
   modulesByCategory,
   type ModuleCategory,
   type ModuleEntry,
-} from "@/lib/routes"
+} from "@/lib/modules"
 import { cn } from "@/lib/utils"
 
 const COLLAPSED_CATEGORIES_STORAGE_KEY = "pedropedia.sidebar.collapsed-categories"

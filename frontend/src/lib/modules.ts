@@ -709,7 +709,7 @@ const CAMBIO_SUBGERENTE_HELP: ActionHelp = {
       name: "AddressType",
       type: "enum",
       required: true,
-      description: "Tipo de dirección. bo_ShipTo para sucursal, bo_BillTo para fiscal.",
+      description: "Tipo de dirección. bo_ShipTopara sucursal despacho, bo_BillTo para sucursal fiscal.",
       example: "bo_ShipTo",
     },
     {
@@ -751,7 +751,7 @@ const CAMBIO_COND_PAGO_HELP: ActionHelp = {
       name: "AddressType",
       type: "enum",
       required: true,
-      description: "Tipo de dirección. bo_ShipTo para sucursal, bo_BillTo para fiscal.",
+      description: "Tipo de dirección. bo_ShipTopara sucursal despacho, bo_BillTo para sucursal fiscal.",
       example: "bo_BillTo",
     },
     {
@@ -800,7 +800,7 @@ const CAMBIO_REGION_CPAGO_HELP: ActionHelp = {
       name: "AddressType",
       type: "enum",
       required: true,
-      description: "Tipo de dirección. bo_ShipTo para sucursal, bo_BillTo para fiscal.",
+      description: "Tipo de dirección. bo_ShipTopara sucursal despacho, bo_BillTo para sucursal fiscal.",
       example: "bo_BillTo",
     },
     {
@@ -877,7 +877,7 @@ const CAMBIO_CARTERA_HELP: ActionHelp = {
       name: "AddressType",
       type: "enum",
       required: true,
-      description: "Tipo de dirección. bo_ShipTo para sucursal, bo_BillTo para fiscal.",
+      description: "Tipo de dirección. bo_ShipTopara sucursal despacho, bo_BillTo para sucursal fiscal.",
       example: "bo_ShipTo",
     },
     {

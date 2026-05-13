@@ -3,7 +3,7 @@ import { useLocation } from "react-router-dom"
 import { HeartbeatDot } from "@/components/atoms/HeartbeatDot"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth"
-import { findModuleByPath } from "@/lib/routes"
+import { findModuleByPath } from "@/lib/modules"
 import { useSapHealth } from "@/lib/useSapHealth"
 import { cn } from "@/lib/utils"
 

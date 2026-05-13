@@ -5,7 +5,7 @@ import { HeartbeatDot } from "@/components/atoms/HeartbeatDot"
 import { Label } from "@/components/atoms/Label"
 import { StatusPill } from "@/components/atoms/StatusPill"
 import { useAuth } from "@/lib/auth"
-import { MODULES, type ModuleEntry } from "@/lib/routes"
+import { MODULES, type ModuleEntry } from "@/lib/modules"
 import { useSapHealth } from "@/lib/useSapHealth"
 import { cn } from "@/lib/utils"
 

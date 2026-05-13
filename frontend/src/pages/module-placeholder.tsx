@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom"
 import { Label } from "@/components/atoms/Label"
 import { StatusPill } from "@/components/atoms/StatusPill"
 import { Button } from "@/components/ui/button"
-import { CATEGORY_LABEL, MODULES } from "@/lib/routes"
+import { CATEGORY_LABEL, MODULES } from "@/lib/modules"
 import { cn } from "@/lib/utils"
 
 /**

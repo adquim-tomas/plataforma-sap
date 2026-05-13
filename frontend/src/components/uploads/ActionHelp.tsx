@@ -3,7 +3,7 @@ import { useState } from "react"
 import { Label } from "@/components/atoms/Label"
 import { StatusPill } from "@/components/atoms/StatusPill"
 import { buttonVariants } from "@/components/ui/button"
-import type { ActionHelp as ActionHelpData } from "@/lib/routes"
+import type { ActionHelp as ActionHelpData } from "@/lib/modules"
 import { cn } from "@/lib/utils"
 
 interface ActionHelpProps {
