@@ -1,7 +1,7 @@
 import { Label } from "@/components/atoms/Label"
 import { StatusPill } from "@/components/atoms/StatusPill"
 import { Button } from "@/components/ui/button"
-import type { ExcelPreview } from "@/lib/excel"
+import { CLEAR_SENTINEL, isClearSentinel, type ExcelPreview } from "@/lib/excel"
 import type { ModuleSchema } from "@/lib/modules"
 import { cn } from "@/lib/utils"
 
@@ -73,6 +73,14 @@ export function UploadPreview({
         <p className="text-[0.78rem] text-muted-foreground">{schema.hint}</p>
       )}
 
+      <p className="text-[0.72rem] text-muted-foreground">
+        Para vaciar un campo en SAP, escribe{" "}
+        <code className="rounded border border-border bg-elev px-1 py-px text-[0.7rem] text-primary">
+          {CLEAR_SENTINEL}
+        </code>{" "}
+        en la celda. Una celda vacía deja el campo intacto.
+      </p>
+
       {/* Tabla densa con primeras filas */}
       {preview.headers.length > 0 ? (
         <div className="border border-border bg-background">
@@ -112,14 +120,22 @@ export function UploadPreview({
                       {idx + 1}
                     </td>
                     {preview.headers.map((h) => {
-                      const v = formatCell(row[h])
+                      const cell = row[h]
+                      const sentinel = isClearSentinel(cell)
+                      const v = formatCell(cell)
                       return (
                         <td
                           key={h}
-                          title={v}
+                          title={sentinel ? "vaciar campo en SAP" : v}
                           className="max-w-[20rem] truncate border-r border-border px-3 py-1.5 tabular-nums last:border-r-0"
                         >
-                          {v || (
+                          {sentinel ? (
+                            <span className="inline-flex items-center border border-warn/40 bg-warn/10 px-1.5 py-px text-[0.68rem] text-warn">
+                              vaciar
+                            </span>
+                          ) : v ? (
+                            v
+                          ) : (
                             <span className="text-muted-foreground">—</span>
                           )}
                         </td>

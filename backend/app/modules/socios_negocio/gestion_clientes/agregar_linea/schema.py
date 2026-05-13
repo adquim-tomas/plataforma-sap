@@ -74,7 +74,10 @@ class AgregarLineaRow(RowBase):
 
     @model_validator(mode="after")
     def validar_al_menos_un_campo(self) -> "AgregarLineaRow":
-        if not any(getattr(self, f) is not None for f in _LINE_FIELDS):
+        # Usamos model_fields_set para que el centinela <VACIO> (None explícito)
+        # cuente como cambio real — celda vacía deja el campo unset y no cuenta.
+        fields_set = self.model_fields_set
+        if not any(f in fields_set for f in _LINE_FIELDS):
             raise ValueError(
                 "La fila no contiene campos a actualizar — "
                 "indicar al menos uno de los campos opcionales."

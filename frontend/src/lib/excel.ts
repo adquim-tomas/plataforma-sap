@@ -1,5 +1,19 @@
 import readXlsxFile from "read-excel-file/browser"
 
+/**
+ * Centinela que el operador escribe en una celda para indicar
+ * "vaciar este campo en SAP" (enviar null). Una celda vacía, en
+ * cambio, omite el campo: SAP no lo toca.
+ */
+export const CLEAR_SENTINEL = "<VACIO>"
+
+export function isClearSentinel(value: unknown): boolean {
+  return (
+    typeof value === "string" &&
+    value.trim().toUpperCase() === CLEAR_SENTINEL
+  )
+}
+
 export interface ExcelPreview {
   filename: string
   sizeBytes: number

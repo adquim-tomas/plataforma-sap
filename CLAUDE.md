@@ -60,6 +60,7 @@ El usuario sube un Excel; las filas válidas se insertan en SAP y las inválidas
 - **CardCode:** `CN` + RUT para clientes, `PN` + RUT para proveedores.
 - **Datos Maestros SN:** solo PATCH (nunca POST).
 - **Dirección:** campos opcionales, pero todos requeridos en conjunto si se edita alguno.
+- **Vaciar campo en SAP:** el operador escribe `<VACIO>` (case-insensitive) en la celda → el backend lo traduce a `null` y SAP vacía el campo. Una celda vacía, en cambio, omite el campo y SAP no lo toca. Convención compartida frontend/backend en la constante `CLEAR_SENTINEL`.
 
 ---
 

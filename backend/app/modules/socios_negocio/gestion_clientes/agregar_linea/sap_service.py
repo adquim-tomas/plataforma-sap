@@ -15,9 +15,11 @@ class AgregarLineaSAPService:
 
     @staticmethod
     async def update(sap: SAPClient, row: AgregarLineaRow) -> None:
-        # exclude_none asegura que solo viajan a SAP los campos que el
-        # operador completó. Code + LineId son requeridos en la línea.
-        line_payload = row.model_dump(exclude_none=True)
+        # exclude_unset: solo viajan a SAP los campos que el operador
+        # escribió en su fila del Excel. Una celda vacía omite el campo;
+        # una celda con CLEAR_SENTINEL deja el campo en None y se envía
+        # como null para vaciarlo en SAP.
+        line_payload = row.model_dump(exclude_unset=True)
 
         payload = {
             "Code": row.Code,

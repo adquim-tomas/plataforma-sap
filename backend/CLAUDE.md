@@ -380,6 +380,12 @@ Los módulos UDO (Datos Maestros, Gestión de Clientes, Log de Precios) usan **P
 - El `schema.py` debe ser estricto con los campos: `extra="forbid"` (o `extra="allow"` con allowlist explícito y validador que rechace lo demás). Fuera del allowlist nada llega a SAP.
 - Los errores SAP deben guardarse en `upload_error` con `error_type = "SAP"` y el payload de respuesta original.
 - Nunca lanzar excepciones no manejadas desde `sap_service.py` — capturar y retornar error estructurado al handler.
+- **Semántica de tres estados por celda** (definida en `_validate_row` de [`app/modules/shared/base_router.py`](app/modules/shared/base_router.py)):
+  - celda vacía → la clave se omite del dict; el campo Pydantic queda `unset`. Los `sap_service.py` deben usar `model_dump(exclude_unset=True)` para no enviarlo a SAP.
+  - celda con `<VACIO>` (constante `CLEAR_SENTINEL`, case-insensitive) → la clave queda con valor `None` explícito y viaja como `null` a SAP (vaciar el campo).
+  - celda con valor → se valida normalmente.
+  - **No usar `exclude_none=True`** en `model_dump`: descarta tanto los campos no completados como los marcados para vaciar, rompiendo el segundo caso.
+  - Validators tipo "al menos un campo a actualizar" deben usar `self.model_fields_set` (no `getattr(...) is not None`) para que `<VACIO>` cuente como cambio real.
 
 ---
 

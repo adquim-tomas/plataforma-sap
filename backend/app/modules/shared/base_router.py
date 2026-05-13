@@ -17,6 +17,14 @@ logger = logging.getLogger(__name__)
 SchemaT = TypeVar("SchemaT", bound=BaseModel)
 
 
+# Centinela que el operador escribe en una celda para vaciar el campo en SAP.
+# Distinción de tres estados:
+#   celda vacía           → clave omitida del dict → Pydantic 'unset' → no viaja a SAP
+#   celda con CLEAR_SENTINEL → clave presente con None → viaja como null a SAP
+#   celda con valor       → clave presente con valor → viaja como valor a SAP
+CLEAR_SENTINEL = "<VACIO>"
+
+
 # ── Modelos de respuesta ───────────────────────────────────────────────────────
 
 class RowError(BaseModel):
@@ -144,16 +152,22 @@ class BaseUploadHandler(ABC, Generic[SchemaT]):
         errors: list[RowError],
     ) -> SchemaT | None:
         """
-        Valida una fila con Pydantic.
+        Valida una fila con Pydantic con semántica de tres estados por celda:
 
-        pd.read_excel con dtype=str deja celdas vacías como numpy.nan (float),
-        que Pydantic no puede matchear contra str | None.
-        El dict se limpia antes de validar.
+        - celda vacía (None / NaN) → la clave se omite del dict, Pydantic la deja
+          'unset'; el sap_service que use `exclude_unset=True` no la enviará a SAP.
+        - celda con CLEAR_SENTINEL → la clave queda con None explícito, viaja
+          como `null` a SAP (vaciar el campo).
+        - celda con valor → se pasa tal cual.
         """
-        cleaned = {
-            k: None if (isinstance(v, float) and math.isnan(v)) else v
-            for k, v in raw.items()
-        }
+        cleaned: dict[str, Any] = {}
+        for k, v in raw.items():
+            if v is None or (isinstance(v, float) and math.isnan(v)):
+                continue
+            if isinstance(v, str) and v.strip().upper() == CLEAR_SENTINEL:
+                cleaned[k] = None
+                continue
+            cleaned[k] = v
         try:
             return self.schema_class(**cleaned)
         except ValidationError as e:
