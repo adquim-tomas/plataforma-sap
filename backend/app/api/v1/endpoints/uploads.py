@@ -44,6 +44,30 @@ from app.modules.socios_negocio.gestion_clientes.actualizar_esp.router import (
 from app.modules.socios_negocio.gestion_clientes.eliminar_cliente.router import (
     EliminarClienteHandler,
 )
+from app.modules.socios_negocio.log_precios.agregar_precio.router import (
+    AgregarPrecioHandler,
+)
+from app.modules.socios_negocio.log_precios.crear_log.router import (
+    CrearLogHandler,
+)
+from app.modules.socios_negocio.log_precios.eliminar_log.router import (
+    EliminarLogHandler,
+)
+from app.modules.compras.orden_compra.crear_servicio.router import (
+    CrearServicioHandler,
+)
+from app.modules.ventas.nota_venta.quitar_folio.router import (
+    QuitarFolioHandler,
+)
+from app.modules.ventas.nota_venta.cancelar_boleta.router import (
+    CancelarBoletaHandler,
+)
+from app.modules.ventas.nota_venta.cambio_libro.router import (
+    CambioLibroHandler,
+)
+from app.modules.ventas.entrega.crear_desde_folio.router import (
+    CrearDesdeFolioHandler,
+)
 
 router = APIRouter(prefix="/uploads", tags=["uploads"])
 logger = logging.getLogger(__name__)
@@ -64,6 +88,14 @@ HANDLERS = {
     "socios_negocio/gestion_clientes/actualizar_nc":       ActualizarNcHandler(),
     "socios_negocio/gestion_clientes/actualizar_esp":      ActualizarEspHandler(),
     "socios_negocio/gestion_clientes/eliminar_cliente":    EliminarClienteHandler(),
+    "socios_negocio/log_precios/agregar_precio":           AgregarPrecioHandler(),
+    "socios_negocio/log_precios/crear_log":                CrearLogHandler(),
+    "socios_negocio/log_precios/eliminar_log":             EliminarLogHandler(),
+    "compras/orden_compra/crear_servicio":                 CrearServicioHandler(),
+    "ventas/nota_venta/quitar_folio":                      QuitarFolioHandler(),
+    "ventas/nota_venta/cancelar_boleta":                   CancelarBoletaHandler(),
+    "ventas/nota_venta/cambio_libro":                      CambioLibroHandler(),
+    "ventas/entrega/crear_desde_folio":                    CrearDesdeFolioHandler(),
 }
 
 

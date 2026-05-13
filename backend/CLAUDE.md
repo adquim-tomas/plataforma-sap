@@ -44,7 +44,7 @@ parse Excel → validate Pydantic → insert SAP → save BD
 |---------|-----------|
 | `base_schema.py` | `RowBase`, `DocumentLineBase`, `APIError`, `RowValidationError`, `ErrorSource` |
 | `base_router.py` | `BaseUploadHandler`, `UploadResult`, `RowError` |
-| `base_validator.py` | `SAPValidator.card_code_exists` / `item_code_exists` / `account_code_exists` / `warehouse_exists` / `sales_person_exists` / `zonal_exists` / `subgerente_exists` / `find_bp_address_row_num` / `nx_gcliente_exists` / `nx_gcliente_line_exists` / `nx_logprecios_exists` |
+| `base_validator.py` | `SAPValidator.card_code_exists` / `item_code_exists` / `account_code_exists` / `warehouse_exists` / `sales_person_exists` / `zonal_exists` / `subgerente_exists` / `find_bp_address_row_num` / `nx_gcliente_exists` / `nx_gcliente_line_exists` / `nx_logprecios_exists` / `invoice_exists` |
 
 ### Estructura por Módulo
 
@@ -117,6 +117,14 @@ Cada fila es un endpoint concreto. Solo se crean acciones que tienen respaldo co
 | Gestión de Clientes (NX_GCLIENTE) | Actualizar NC | `socios_negocio/gestion_clientes/actualizar_nc` | PATCH línea con `U_LMM_NC` | `classmargen.py::MargenChange.updateNc` + `updateManyNc` |
 | Gestión de Clientes (NX_GCLIENTE) | Actualizar precio especial | `socios_negocio/gestion_clientes/actualizar_esp` | PATCH línea con `U_LMM_ESP` | `classmargen.py::MargenChange.updateEsp` + `updateManyEsp` |
 | Gestión de Clientes (NX_GCLIENTE) | Eliminar cliente | `socios_negocio/gestion_clientes/eliminar_cliente` | DELETE `NX_GCLIENTE('{Code}')` (header + todas sus líneas) | `classGC.py::GC.deleteGC` + `multi_deleteGC` |
+| Log de Precios (NX_LOGPRECIOS) | Agregar precio | `socios_negocio/log_precios/agregar_precio` | PATCH `NX_LOGPRECIOS('{Code}')` appendeando línea a `NX_LOGDETALLECollection` | `classlogprecio.py::logPrecio.addLine` + `addManyLog` |
+| Log de Precios (NX_LOGPRECIOS) | Crear log | `socios_negocio/log_precios/crear_log` | POST `NX_LOGPRECIOS` (header + 1ra línea) | `classlogprecio.py::logPrecio.newLog` + `multi_newLog` (variante adquim) |
+| Log de Precios (NX_LOGPRECIOS) | Eliminar log | `socios_negocio/log_precios/eliminar_log` | DELETE `NX_LOGPRECIOS('{Code}')` (header + todas sus líneas) | `classlogprecio.py::logPrecio.deleteLog` + `deleteManyLog` |
+| Orden de Compra (PurchaseOrders) | Crear OC de servicio | `compras/orden_compra/crear_servicio` | POST `PurchaseOrders` con `DocType=dDocument_Service` (1 línea) | `classdoccompras.py::OC.add_oc_servicio` + `multi_oc_servicio` (variante adquim) |
+| Nota de Venta (Invoices) | Quitar folio | `ventas/nota_venta/quitar_folio` | PATCH `Invoices({DocEntry})` con `FolioPrefixString=null` + `FolioNumber=null` | `classInvoice.py::boletas.quitar_folio` + `multi_folio` |
+| Nota de Venta (Invoices) | Cancelar boleta | `ventas/nota_venta/cancelar_boleta` | POST `Invoices({DocEntry})/Cancel` | `classInvoice.py::boletas.cancel_boleta` + `multi_cancel` |
+| Nota de Venta (Invoices) | Cambio de libro | `ventas/nota_venta/cambio_libro` | PATCH `Invoices({DocEntry})` con `U_IX_Ind='NT'` | `classInvoice.py::boletas.cambio_libro` + `multi_libro` |
+| Entrega (DeliveryNotes) | Crear desde folio | `ventas/entrega/crear_desde_folio` | POST `DeliveryNotes` armado desde una factura por folio (prefijo '33') con líneas pendientes | `class_entrgas.py::entrega.add_multi_entrega` + `preparar_json_entrega` |
 
 #### Datos Maestros — Activar / Desactivar
 
@@ -202,6 +210,123 @@ Las acciones `actualizar_margen_tp`, `actualizar_nc` y `actualizar_esp` siguen e
 - Pedro: `MargenChange.updateEsp`. Opción 1 (LineId explícito).
 - Solapamiento intencional con `actualizar_margen_tp`: esta acción modifica solo ESP; la otra modifica margen + ESP juntos. Reflejan dos llamadas distintas de Pedro.
 
+#### Patrón compartido de las acciones de Log de Precios con cálculo IVA
+
+Las acciones `agregar_precio` (PATCH) y `crear_log` (POST) toman los mismos
+campos numéricos de una línea de precio y calculan **en el servidor**:
+
+- `U_NX_IVA = U_NX_Neto * 0.19`
+- `U_NX_LineTotal = U_NX_Neto + U_NX_IE + U_NX_FEPPIEV + U_NX_IVA`
+
+El operador NO entrega `U_NX_IVA` ni `U_NX_LineTotal` en el Excel — el
+servicio los redondea a 4 decimales y los manda al SAP body. La fórmula es
+la de `addLine` en classlogprecio.py de Pedro; `multi_newLog` en Pedro
+también pide IVA + LineTotal en Excel pero la fórmula matemática es la
+misma — acá unificamos en una sola convención.
+
+Fechas (`U_NX_Fecha`) van como `date` en Pydantic v2 — admite ISO
+`YYYY-MM-DD` desde el Excel (`pd.read_excel(..., dtype=str)` deja la celda
+como string). El servicio serializa con `.isoformat()` antes de mandar.
+
+#### Log de Precios — Agregar precio
+
+- Campos: `Code`, `U_NX_Fecha`, `U_NX_Neto`, `U_NX_IE`, `U_NX_FEPPIEV`,
+  `U_LMM_Esp`, `U_LMM_Esp_Flota`, `U_LMM_JLC_Real`, `U_LMM_Copec`.
+- PATCH a `NX_LOGPRECIOS('{Code}')` con una entrada en
+  `NX_LOGDETALLECollection` (IVA + LineTotal computados).
+- Validador SAP: `nx_logprecios_exists` (header debe existir).
+- Pedro: `logPrecio.addLine`.
+
+#### Log de Precios — Crear log
+
+- Campos header: `Code`, `Name`, `U_NX_Sucursal`, `U_NX_DescSucursal`,
+  `U_NX_CodArt`. Campos línea inicial: `U_NX_Fecha`, `U_NX_Neto`, `U_NX_IE`,
+  `U_NX_FEPPIEV`, `U_LMM_Esp`, `U_LMM_Esp_Flota`, `U_LMM_JLC_Real`,
+  `U_LMM_Copec` (default 0).
+- POST `NX_LOGPRECIOS` con el header + 1ra línea en una sola operación
+  (IVA + LineTotal computados).
+- Validador SAP: rechaza si `nx_logprecios_exists(Code)` ya existe
+  (redirige al operador a `agregar_precio`).
+- Pedro: `logPrecio.newLog` variante adquim (endpoint `NX_LOGPRECIOS`).
+  La variante adclean (`LogPrecios`) queda fuera de scope.
+
+#### Log de Precios — Eliminar log
+
+- Único campo aceptado: `Code`. Schema con `extra="forbid"`.
+- `DELETE NX_LOGPRECIOS('{Code}')` — borra header + todo el historial.
+- Validador SAP: `nx_logprecios_exists`.
+- Pedro: `logPrecio.deleteLog` + `deleteManyLog`.
+
+#### Patrón compartido de las acciones por `DocEntry` de factura
+
+Las acciones de Nota de Venta (`quitar_folio`, `cancelar_boleta`,
+`cambio_libro`) toman únicamente `DocEntry` (int) del Excel. Schema con
+`extra="forbid"`. Validador comparte `SAPValidator.invoice_exists`.
+Difieren solo en el verbo y el cuerpo SAP:
+
+- `quitar_folio` → PATCH con `{FolioPrefixString: None, FolioNumber: None}`.
+- `cancelar_boleta` → POST a `/Cancel` (sin body — mandamos `{}`).
+- `cambio_libro` → PATCH con `{U_IX_Ind: 'NT'}` (valor hardcodeado).
+
+#### Nota de Venta — Quitar folio
+
+- Único campo: `DocEntry` (int).
+- PATCH `Invoices({DocEntry})` con folio en null.
+- Validador SAP: `invoice_exists`.
+- Pedro: `boletas.quitar_folio` + `multi_folio`.
+
+#### Nota de Venta — Cancelar boleta
+
+- Único campo: `DocEntry` (int).
+- POST `Invoices({DocEntry})/Cancel` — SAP genera el documento de
+  cancelación. Operación irreversible.
+- Validador SAP: `invoice_exists`.
+- Pedro: `boletas.cancel_boleta` + `multi_cancel`.
+
+#### Nota de Venta — Cambio de libro
+
+- Único campo: `DocEntry` (int).
+- PATCH `Invoices({DocEntry})` con `U_IX_Ind='NT'` (valor fijo del servidor).
+- Validador SAP: `invoice_exists`.
+- Pedro: `boletas.cambio_libro` + `multi_libro`.
+
+#### Entrega — Crear desde folio
+
+- Campos: `CardCode`, `Folio` (int — FolioNumber, prefijo '33' implícito),
+  `FechaCarga` (date YYYY-MM-DD).
+- POST `DeliveryNotes` armado a partir de la factura matcheada por
+  `FolioNumber={Folio} and FolioPrefixString='33'`:
+  - Si no existe → error fila (`invoice_not_found`).
+  - Si hay más de una → error fila (`invoice_ambiguous`). Pedro las saltea
+    silenciosamente; nosotros las reportamos.
+  - Si el CardCode del Excel no coincide con el de la factura → error
+    (`card_code_mismatch`).
+  - `DocumentLines` se arma con una entrada `{BaseType: 13, BaseEntry,
+    BaseLine}` por cada línea con `RemainingOpenQuantity != 0`.
+  - Si no quedan líneas pendientes → error (`no_pending_lines`).
+  - El UDF `U_PVA_FC` recibe la `FechaCarga` en ISO.
+- Esta acción **no tiene** `validator.py` separado: las validaciones de
+  negocio dependen del mismo GET que arma el payload del POST, por lo que
+  conviven en `sap_service.py` para no duplicar la llamada SAP. El handler
+  delega directamente.
+- Pedro: `entrega.add_multi_entrega` + `entrega.preparar_json_entrega`.
+
+#### Orden de Compra — Crear OC de servicio
+
+- Campos: `CardCode` (proveedor PN+RUT), `Encargado` (int SalesPersonCode),
+  `Descripcion` (str — Comments + ItemDescription), `Cuenta` (str
+  AccountCode), `CC1` (str CostingCode), `CC2` (str CostingCode2),
+  `Total` (int — Pedro castea con `int()`), `Sucursal` (int
+  BPL_IDAssignedToInvoice).
+- POST `PurchaseOrders` con `DocType=dDocument_Service` y exactamente una
+  línea: `{AccountCode, CostingCode, CostingCode2, LineTotal,
+  ItemDescription}`. Una fila del Excel = una OC.
+- Validadores SAP: `card_code_exists` (proveedor), `sales_person_exists`
+  (encargado), `account_code_exists` (cuenta contable).
+- Pedro: `OC.add_oc_servicio` + `multi_oc_servicio`, variante adquim
+  (incluye `BPL_IDAssignedToInvoice`). La variante adclean omite ese campo
+  y queda fuera de scope hasta identificarla como acción separada.
+
 #### Gestión de Clientes — Eliminar cliente
 
 - Único campo aceptado: `Code`. Schema con `extra="forbid"`.
@@ -236,12 +361,16 @@ Los módulos UDO (Datos Maestros, Gestión de Clientes, Log de Precios) usan **P
 | **Gestión de Clientes — Actualizar NC** | ✅ | PATCH línea con `U_LMM_NC` (Pedro-grounded en `MargenChange.updateNc`) |
 | **Gestión de Clientes — Actualizar precio especial** | ✅ | PATCH línea con `U_LMM_ESP` (Pedro-grounded en `MargenChange.updateEsp`) |
 | **Gestión de Clientes — Eliminar cliente** | ✅ | DELETE header NX_GCLIENTE (Pedro-grounded en `GC.deleteGC`) |
-| Log de Precios | ⬜ | sin acciones Pedro-grounded definidas todavía |
-| Orden de Compra | ⬜ | sin acciones Pedro-grounded definidas todavía |
+| **Log de Precios — Agregar precio** | ✅ | PATCH `NX_LOGPRECIOS` append línea con IVA/LineTotal computados (Pedro-grounded en `logPrecio.addLine`) |
+| **Log de Precios — Crear log** | ✅ | POST `NX_LOGPRECIOS` (header + 1ra línea, variante adquim) (Pedro-grounded en `logPrecio.newLog`) |
+| **Log de Precios — Eliminar log** | ✅ | DELETE header NX_LOGPRECIOS (Pedro-grounded en `logPrecio.deleteLog`) |
+| **Orden de Compra — Crear OC de servicio** | ✅ | POST `PurchaseOrders` `dDocument_Service` (Pedro-grounded en `OC.add_oc_servicio` adquim) |
+| **Nota de Venta — Quitar folio** | ✅ | PATCH `Invoices` con folio en null (Pedro-grounded en `boletas.quitar_folio`) |
+| **Nota de Venta — Cancelar boleta** | ✅ | POST `Invoices({DocEntry})/Cancel` (Pedro-grounded en `boletas.cancel_boleta`) |
+| **Nota de Venta — Cambio de libro** | ✅ | PATCH `Invoices` con `U_IX_Ind='NT'` (Pedro-grounded en `boletas.cambio_libro`) |
+| **Entrega — Crear desde folio** | ✅ | POST `DeliveryNotes` desde factura por folio '33' (Pedro-grounded en `entrega.add_multi_entrega`) |
 | Cotización de Compras | ⬜ | sin scaffolding |
 | Factura de Proveedores | ⬜ | bloqueado por repo de Pedro |
-| Nota de Venta | ⬜ | sin scaffolding |
-| Entrega | ⬜ | sin scaffolding |
 
 ---
 

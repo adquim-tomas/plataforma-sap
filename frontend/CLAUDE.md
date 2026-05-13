@@ -139,6 +139,10 @@ Configuración en [`src/router.tsx`](src/router.tsx) usando `createBrowserRouter
 | `/` | `AppShell` → `HomePage` | requerida |
 | `/uploads/datos-maestros` | `AppShell` → `DatosMaestrosPage` | requerida |
 | `/uploads/gestion-clientes` | `AppShell` → `GestionClientesPage` | requerida |
+| `/uploads/log-precios` | `AppShell` → `LogPreciosPage` | requerida |
+| `/uploads/orden-compra` | `AppShell` → `OrdenCompraPage` | requerida |
+| `/uploads/nota-venta` | `AppShell` → `NotaVentaPage` | requerida |
+| `/uploads/entrega` | `AppShell` → `EntregaPage` | requerida |
 | `/uploads/:slug` | `AppShell` → `ModulePlaceholderPage` (fallback) | requerida |
 | `*` | `NotFoundPage` | público |
 
@@ -154,12 +158,12 @@ Para módulos no implementados (`implemented: false`), `actions` es `undefined` 
 |-------|------|------------------------|---------|
 | I | `datos-maestros` | `activar-desactivar`, `cambio-cartera`, `cambio-subgerente`, `cambio-cond-pago`, `cambio-region-cpago`, `bloqueo-cofase` | ✅ |
 | II | `gestion-clientes` | `agregar-linea`, `actualizar-margen-tp`, `actualizar-nc`, `actualizar-esp`, `eliminar-cliente` | ✅ |
-| III | `log-precios` | — | ⬜ |
+| III | `log-precios` | `agregar-precio`, `crear-log`, `eliminar-log` | ✅ |
 | IV | `cotizacion` | — | ⬜ |
-| V | `orden-compra` | — | ⬜ |
+| V | `orden-compra` | `crear-servicio` | ✅ |
 | VI | `factura-proveedor` | — | ⬜ |
-| VII | `nota-venta` | — | ⬜ |
-| VIII | `entrega` | — | ⬜ |
+| VII | `nota-venta` | `quitar-folio`, `cancelar-boleta`, `cambio-libro` | ✅ |
+| VIII | `entrega` | `crear-desde-folio` | ✅ |
 
 ---
 
@@ -210,12 +214,12 @@ Para módulos no implementados (`implemented: false`), `actions` es `undefined` 
 | Preview pre-subida (parsing cliente + chequeo de columnas obligatorias + confirmación) | ✅ | `previewExcel()` en `lib/excel.ts` (read-excel-file). `ModuleSchema` por módulo en `lib/routes.ts` define `requiredColumns` |
 | **Datos Maestros** UI | ✅ | Página con selector de acción (tabs). 6 acciones: activar/desactivar, cambio de cartera, subgerente, cond pago, región+cpago, bloqueo COFASE |
 | **Gestión de Clientes** UI | ✅ | Página con selector de acción (tabs). 5 acciones: agregar línea, actualizar margen+TP, actualizar NC, actualizar ESP, eliminar cliente |
-| **Log de Precios** UI | ⬜ | sin backend |
-| **Orden de Compra** UI | ⬜ | sin backend |
+| **Log de Precios** UI | ✅ | Página con selector de acción (tabs). 3 acciones: agregar precio, crear log, eliminar log |
+| **Orden de Compra** UI | ✅ | Página con selector de acción (tabs). 1 acción: crear OC de servicio |
 | **Cotización de Compras** UI | ⬜ | sin backend |
 | **Factura de Proveedores** UI | ⬜ | sin backend (bloqueado por repo de Pedro) |
-| **Nota de Venta** UI | ⬜ | sin backend |
-| **Entrega** UI | ⬜ | |
+| **Nota de Venta** UI | ✅ | Página con selector de acción (tabs). 3 acciones: quitar folio, cancelar boleta, cambio de libro |
+| **Entrega** UI | ✅ | Página con selector de acción (tabs). 1 acción: crear desde folio |
 | Audit Log page | ⬜ | |
 
 ---

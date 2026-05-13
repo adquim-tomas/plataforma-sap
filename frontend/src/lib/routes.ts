@@ -77,6 +77,376 @@ export interface ModuleEntry {
 
 // ── Help: definidos antes del array para permitir derivar schemas ────────────
 
+const CREAR_DESDE_FOLIO_HELP: ActionHelp = {
+  description:
+    "Genera una nota de entrega (DeliveryNote) a partir del folio de una factura existente. El servidor busca la factura por folio (prefijo '33'), arma las líneas con cantidad pendiente, y crea la entrega.",
+  columns: [
+    {
+      name: "CardCode",
+      type: "str",
+      required: true,
+      description: "CardCode del cliente — debe coincidir con el de la factura asociada al folio.",
+      example: "CN12345678-9",
+    },
+    {
+      name: "Folio",
+      type: "int",
+      required: true,
+      description: "FolioNumber de la factura origen (el prefijo '33' lo asume el servidor).",
+      example: "100234",
+    },
+    {
+      name: "FechaCarga",
+      type: "date",
+      required: true,
+      description: "Fecha de carga en formato YYYY-MM-DD. Se guarda como U_PVA_FC en SAP.",
+      example: "2026-05-13",
+    },
+  ],
+  businessRules: [
+    "El Folio debe corresponder a una factura única en SAP (prefijo '33'). Si hay más de una, la fila se rechaza y hay que identificar la correcta manualmente.",
+    "El CardCode del Excel debe coincidir con el CardCode de la factura — si no, la fila se rechaza.",
+    "Solo se generan líneas de entrega para las líneas de la factura con cantidad pendiente (RemainingOpenQuantity ≠ 0). Si no quedan pendientes, la fila se rechaza.",
+    "Cada fila genera una DeliveryNote — no se agrupan filas por cliente.",
+  ],
+  templateFilename: "crear_desde_folio_template.xlsx",
+}
+
+const QUITAR_FOLIO_HELP: ActionHelp = {
+  description:
+    "Limpia el folio asociado a una factura: pone FolioPrefixString y FolioNumber en null. Útil para boletas que se facturaron contra el folio equivocado y necesitan reasignación.",
+  columns: [
+    {
+      name: "DocEntry",
+      type: "int",
+      required: true,
+      description: "DocEntry SAP de la factura (entero, no confundir con FolioNumber).",
+      example: "12345",
+    },
+  ],
+  businessRules: [
+    "DocEntry debe existir en SAP — si no existe, la fila falla.",
+    "La operación setea FolioPrefixString y FolioNumber en null en una sola pasada.",
+    "El cambio se aplica solo a la factura indicada — otras facturas no se tocan.",
+    "Si necesitás identificar el DocEntry desde el FolioNumber, hacelo en SAP antes de armar el Excel.",
+  ],
+  templateFilename: "quitar_folio_template.xlsx",
+}
+
+const CANCELAR_BOLETA_HELP: ActionHelp = {
+  description:
+    "Cancela una factura emitiendo el documento de cancelación correspondiente en SAP. Operación irreversible — SAP genera el documento contable de reverso.",
+  columns: [
+    {
+      name: "DocEntry",
+      type: "int",
+      required: true,
+      description: "DocEntry SAP de la factura a cancelar (entero).",
+      example: "12345",
+    },
+  ],
+  businessRules: [
+    "DocEntry debe existir en SAP — si no existe, la fila falla.",
+    "Operación irreversible: SAP genera el documento de cancelación y queda registrado contablemente.",
+    "Una fila del Excel = una factura cancelada. Verificá el listado en el preview antes de confirmar.",
+  ],
+  templateFilename: "cancelar_boleta_template.xlsx",
+}
+
+const CAMBIO_LIBRO_HELP: ActionHelp = {
+  description:
+    "Reasigna el indicador de libro (U_IX_Ind) de una factura al valor fijo 'NT' para que no quede asociada a un folio y pueda usarse como boleta.",
+  columns: [
+    {
+      name: "DocEntry",
+      type: "int",
+      required: true,
+      description: "DocEntry SAP de la factura (entero).",
+      example: "12345",
+    },
+  ],
+  businessRules: [
+    "DocEntry debe existir en SAP — si no existe, la fila falla.",
+    "El valor del libro 'NT' es fijo, lo aplica el servidor — el operador solo entrega el DocEntry.",
+    "El cambio se aplica solo a la factura indicada.",
+  ],
+  templateFilename: "cambio_libro_template.xlsx",
+}
+
+const CREAR_SERVICIO_HELP: ActionHelp = {
+  description:
+    "Genera órdenes de compra de servicios — un documento por fila del Excel. Cada OC se crea como DocType=dDocument_Service con exactamente una línea contable (cuenta, dimensiones CC1/CC2, total).",
+  columns: [
+    {
+      name: "CardCode",
+      type: "str",
+      required: true,
+      description: "CardCode del proveedor en SAP (PN+RUT).",
+      example: "PN76543210-1",
+    },
+    {
+      name: "Encargado",
+      type: "int",
+      required: true,
+      description: "SalesPersonCode del encargado de la OC. Debe ser un vendedor activo en SAP.",
+      example: "5",
+    },
+    {
+      name: "Descripcion",
+      type: "str",
+      required: true,
+      description: "Descripción del servicio. Se usa como Comments del documento y como ItemDescription de la línea.",
+      example: "Mantenimiento mensual flota — abril",
+    },
+    {
+      name: "Cuenta",
+      type: "str",
+      required: true,
+      description: "AccountCode contable de la línea (plan de cuentas SAP).",
+      example: "5-2-01-001",
+    },
+    {
+      name: "CC1",
+      type: "str",
+      required: true,
+      description: "CostingCode — dimensión analítica 1.",
+      example: "ADM",
+    },
+    {
+      name: "CC2",
+      type: "str",
+      required: true,
+      description: "CostingCode2 — dimensión analítica 2.",
+      example: "RM",
+    },
+    {
+      name: "Total",
+      type: "int",
+      required: true,
+      description: "LineTotal en moneda local, como entero (sin decimales).",
+      example: "1250000",
+    },
+    {
+      name: "Sucursal",
+      type: "int",
+      required: true,
+      description: "ID de sucursal SAP (BPL_IDAssignedToInvoice). Aplica a la variante adquim.",
+      example: "1",
+    },
+  ],
+  businessRules: [
+    "Una fila del Excel genera un PurchaseOrder en SAP — no se agrupan filas.",
+    "El CardCode del proveedor debe existir en SAP.",
+    "Encargado debe ser un SalesPersonCode activo.",
+    "Cuenta debe existir en el plan de cuentas SAP.",
+    "Total se envía como entero (Pedro castea con int()) — para montos con decimales redondear antes de subir.",
+    "Operación irreversible una vez aceptada por SAP — verificar las filas en el preview antes de confirmar.",
+  ],
+  templateFilename: "crear_servicio_template.xlsx",
+}
+
+const AGREGAR_PRECIO_HELP: ActionHelp = {
+  description:
+    "Agrega una línea nueva al log de precios de un cliente (NX_LOGPRECIOS) existente. SAP appendea la línea a NX_LOGDETALLECollection. IVA y total se calculan en el servidor — no los entregas vos.",
+  columns: [
+    {
+      name: "Code",
+      type: "str",
+      required: true,
+      description: "Code del header NX_LOGPRECIOS al que se le agrega la línea.",
+      example: "GAS95-001",
+    },
+    {
+      name: "U_NX_Fecha",
+      type: "date",
+      required: true,
+      description: "Fecha del precio en formato YYYY-MM-DD.",
+      example: "2026-05-13",
+    },
+    {
+      name: "U_NX_Neto",
+      type: "float",
+      required: true,
+      description: "Precio neto (base sobre la que se calcula el IVA del 19%).",
+      example: "850.50",
+    },
+    {
+      name: "U_NX_IE",
+      type: "float",
+      required: true,
+      description: "Impuesto específico.",
+      example: "120.00",
+    },
+    {
+      name: "U_NX_FEPPIEV",
+      type: "float",
+      required: true,
+      description: "Fee PIEV.",
+      example: "5.50",
+    },
+    {
+      name: "U_LMM_Esp",
+      type: "float",
+      required: true,
+      description: "Precio especial / referencia ESP.",
+      example: "830.00",
+    },
+    {
+      name: "U_LMM_Esp_Flota",
+      type: "float",
+      required: true,
+      description: "Precio especial flota.",
+      example: "820.00",
+    },
+    {
+      name: "U_LMM_JLC_Real",
+      type: "float",
+      required: true,
+      description: "Precio JLC real.",
+      example: "840.00",
+    },
+    {
+      name: "U_LMM_Copec",
+      type: "float",
+      required: true,
+      description: "Precio Copec de referencia. Si no aplica, completar con 0.",
+      example: "0",
+    },
+  ],
+  businessRules: [
+    "El Code debe corresponder a un NX_LOGPRECIOS existente — para crear el header usar 'Crear log'.",
+    "El servidor calcula U_NX_IVA = U_NX_Neto * 0.19 y U_NX_LineTotal = U_NX_Neto + U_NX_IE + U_NX_FEPPIEV + U_NX_IVA — no incluirlos en el Excel.",
+    "La fecha debe ir en formato YYYY-MM-DD (ej: 2026-05-13). Excel suele guardarla como fecha — al subir, validar que se exporte como texto en ese formato.",
+    "Cada fila del Excel agrega una entrada nueva al log; los precios históricos previos no se tocan.",
+  ],
+  templateFilename: "agregar_precio_template.xlsx",
+}
+
+const CREAR_LOG_HELP: ActionHelp = {
+  description:
+    "Crea un log de precios nuevo (NX_LOGPRECIOS) para un cliente/artículo con su primera línea de precios. Para clientes/artículos que ya tienen log, usar 'Agregar precio'.",
+  columns: [
+    {
+      name: "Code",
+      type: "str",
+      required: true,
+      description: "Code (clave primaria) del nuevo NX_LOGPRECIOS. Debe ser único.",
+      example: "GAS95-001",
+    },
+    {
+      name: "Name",
+      type: "str",
+      required: true,
+      description: "Nombre legible del log.",
+      example: "Gasolina 95 — Casa Matriz",
+    },
+    {
+      name: "U_NX_Sucursal",
+      type: "str",
+      required: true,
+      description: "ID de la sucursal asociada al log.",
+      example: "1",
+    },
+    {
+      name: "U_NX_DescSucursal",
+      type: "str",
+      required: true,
+      description: "Descripción de la sucursal.",
+      example: "Casa Matriz",
+    },
+    {
+      name: "U_NX_CodArt",
+      type: "str",
+      required: true,
+      description: "Código del artículo SAP al que pertenece el log.",
+      example: "GAS-95",
+    },
+    {
+      name: "U_NX_Fecha",
+      type: "date",
+      required: true,
+      description: "Fecha de la primera línea de precios (YYYY-MM-DD).",
+      example: "2026-05-13",
+    },
+    {
+      name: "U_NX_Neto",
+      type: "float",
+      required: true,
+      description: "Precio neto (base sobre la que se calcula el IVA del 19%).",
+      example: "850.50",
+    },
+    {
+      name: "U_NX_IE",
+      type: "float",
+      required: true,
+      description: "Impuesto específico.",
+      example: "120.00",
+    },
+    {
+      name: "U_NX_FEPPIEV",
+      type: "float",
+      required: true,
+      description: "Fee PIEV.",
+      example: "5.50",
+    },
+    {
+      name: "U_LMM_Esp",
+      type: "float",
+      required: true,
+      description: "Precio especial / referencia ESP.",
+      example: "830.00",
+    },
+    {
+      name: "U_LMM_Esp_Flota",
+      type: "float",
+      required: true,
+      description: "Precio especial flota.",
+      example: "820.00",
+    },
+    {
+      name: "U_LMM_JLC_Real",
+      type: "float",
+      required: true,
+      description: "Precio JLC real.",
+      example: "840.00",
+    },
+    {
+      name: "U_LMM_Copec",
+      type: "float",
+      required: false,
+      description: "Precio Copec de referencia. Default 0 si no se completa.",
+      example: "0",
+    },
+  ],
+  businessRules: [
+    "El Code no debe existir todavía — si existe, la fila falla con 'ya existe' y hay que usar 'Agregar precio'.",
+    "El servidor calcula U_NX_IVA = U_NX_Neto * 0.19 y U_NX_LineTotal = U_NX_Neto + U_NX_IE + U_NX_FEPPIEV + U_NX_IVA — no incluirlos en el Excel.",
+    "Esta acción crea el header + su primera línea de precios en una sola operación.",
+    "Para agregar más líneas al mismo Code después de creado, usar 'Agregar precio'.",
+  ],
+  templateFilename: "crear_log_template.xlsx",
+}
+
+const ELIMINAR_LOG_HELP: ActionHelp = {
+  description:
+    "Elimina por completo un log de precios (NX_LOGPRECIOS) — borra el header y todo su historial de líneas. Operación irreversible.",
+  columns: [
+    {
+      name: "Code",
+      type: "str",
+      required: true,
+      description: "Code del NX_LOGPRECIOS a eliminar.",
+      example: "GAS95-001",
+    },
+  ],
+  businessRules: [
+    "Borra el log entero (header + todas las líneas históricas). Operación irreversible.",
+    "El Code debe existir; si no, la fila se reporta como error.",
+    "Para borrar una línea puntual sin tocar el log entero no hay acción disponible (no la cubre la base de referencia).",
+  ],
+  templateFilename: "eliminar_log_template.xlsx",
+}
+
 const ACTUALIZAR_MARGEN_TP_HELP: ActionHelp = {
   description:
     "Actualiza el margen comercial y el tipo de precio (TP) de una línea ya existente en NX_GCLIENTE. Cambia los campos U_NX_Margen + U_LMM_ESP de la línea indicada. Las demás líneas del cliente no se tocan.",
@@ -667,8 +1037,31 @@ export const MODULES: ModuleEntry[] = [
     code: "SN.LP",
     title: "Log de Precios",
     path: "/uploads/log-precios",
-    implemented: false,
+    implemented: true,
     category: "socios_negocio",
+    actions: [
+      {
+        id: "agregar-precio",
+        title: "Agregar precio",
+        apiPath: "socios_negocio/log_precios/agregar_precio",
+        help: AGREGAR_PRECIO_HELP,
+        schema: schemaFromHelp(AGREGAR_PRECIO_HELP),
+      },
+      {
+        id: "crear-log",
+        title: "Crear log",
+        apiPath: "socios_negocio/log_precios/crear_log",
+        help: CREAR_LOG_HELP,
+        schema: schemaFromHelp(CREAR_LOG_HELP),
+      },
+      {
+        id: "eliminar-log",
+        title: "Eliminar log",
+        apiPath: "socios_negocio/log_precios/eliminar_log",
+        help: ELIMINAR_LOG_HELP,
+        schema: schemaFromHelp(ELIMINAR_LOG_HELP),
+      },
+    ],
   },
   // Compras
   {
@@ -684,8 +1077,17 @@ export const MODULES: ModuleEntry[] = [
     code: "CO.OC",
     title: "Orden de Compra",
     path: "/uploads/orden-compra",
-    implemented: false,
+    implemented: true,
     category: "compras",
+    actions: [
+      {
+        id: "crear-servicio",
+        title: "Crear OC de servicio",
+        apiPath: "compras/orden_compra/crear_servicio",
+        help: CREAR_SERVICIO_HELP,
+        schema: schemaFromHelp(CREAR_SERVICIO_HELP),
+      },
+    ],
   },
   {
     roman: "VI",
@@ -701,16 +1103,48 @@ export const MODULES: ModuleEntry[] = [
     code: "VN.NV",
     title: "Nota de Venta",
     path: "/uploads/nota-venta",
-    implemented: false,
+    implemented: true,
     category: "ventas",
+    actions: [
+      {
+        id: "quitar-folio",
+        title: "Quitar folio",
+        apiPath: "ventas/nota_venta/quitar_folio",
+        help: QUITAR_FOLIO_HELP,
+        schema: schemaFromHelp(QUITAR_FOLIO_HELP),
+      },
+      {
+        id: "cancelar-boleta",
+        title: "Cancelar boleta",
+        apiPath: "ventas/nota_venta/cancelar_boleta",
+        help: CANCELAR_BOLETA_HELP,
+        schema: schemaFromHelp(CANCELAR_BOLETA_HELP),
+      },
+      {
+        id: "cambio-libro",
+        title: "Cambio de libro",
+        apiPath: "ventas/nota_venta/cambio_libro",
+        help: CAMBIO_LIBRO_HELP,
+        schema: schemaFromHelp(CAMBIO_LIBRO_HELP),
+      },
+    ],
   },
   {
     roman: "VIII",
     code: "VN.EN",
     title: "Entrega",
     path: "/uploads/entrega",
-    implemented: false,
+    implemented: true,
     category: "ventas",
+    actions: [
+      {
+        id: "crear-desde-folio",
+        title: "Crear desde folio",
+        apiPath: "ventas/entrega/crear_desde_folio",
+        help: CREAR_DESDE_FOLIO_HELP,
+        schema: schemaFromHelp(CREAR_DESDE_FOLIO_HELP),
+      },
+    ],
   },
 ]
 

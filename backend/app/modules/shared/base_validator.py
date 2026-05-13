@@ -155,6 +155,18 @@ class SAPValidator:
             return False
 
     @staticmethod
+    async def invoice_exists(sap: SAPClient, doc_entry: int) -> bool:
+        """Verifica que un Invoices('{DocEntry}') exista en SAP."""
+        try:
+            await sap.get(
+                f"Invoices({doc_entry})",
+                params={"$select": "DocEntry"},
+            )
+            return True
+        except SAPNotFoundError:
+            return False
+
+    @staticmethod
     async def nx_logprecios_exists(sap: SAPClient, code: str) -> bool:
         """Verifica que un header NX_LOGPRECIOS (log de precios) exista en SAP."""
         try:
