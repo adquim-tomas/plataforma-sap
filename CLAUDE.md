@@ -43,15 +43,14 @@ El usuario sube un Excel; las filas válidas se insertan en SAP y las inválidas
 ### Compras — Proveedores
 | # | Módulo | Estado |
 |---|--------|--------|
-| 4 | Cotización de Compras | ⬜ |
-| 5 | Orden de Compra | ✅ |
-| 6 | Factura de Proveedores | ⬜ | IMPORTANTE - Pedir repo a Pedro y dejar para el final
+| 4 | Orden de Compra | ✅ |
+| 5 | Factura de Proveedores | ⬜ | IMPORTANTE - Pedir repo a Pedro y dejar para el final
 
 ### Ventas — Clientes
 | # | Módulo | Estado |
 |---|--------|--------|
-| 7 | Nota de Venta | ⬜ |
-| 8 | Entrega | ⬜ |
+| 6 | Nota de Venta | ✅ |
+| 7 | Entrega | ✅ |
 
 ---
 

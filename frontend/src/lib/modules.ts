@@ -1066,14 +1066,6 @@ export const MODULES: ModuleEntry[] = [
   // Compras
   {
     roman: "IV",
-    code: "CO.CT",
-    title: "Cotización de Compras",
-    path: "/uploads/cotizacion",
-    implemented: false,
-    category: "compras",
-  },
-  {
-    roman: "V",
     code: "CO.OC",
     title: "Orden de Compra",
     path: "/uploads/orden-compra",
@@ -1090,7 +1082,7 @@ export const MODULES: ModuleEntry[] = [
     ],
   },
   {
-    roman: "VI",
+    roman: "V",
     code: "CO.FP",
     title: "Factura de Proveedores",
     path: "/uploads/factura-proveedor",
@@ -1099,7 +1091,7 @@ export const MODULES: ModuleEntry[] = [
   },
   // Ventas
   {
-    roman: "VII",
+    roman: "VI",
     code: "VN.NV",
     title: "Nota de Venta",
     path: "/uploads/nota-venta",
@@ -1130,7 +1122,7 @@ export const MODULES: ModuleEntry[] = [
     ],
   },
   {
-    roman: "VIII",
+    roman: "VII",
     code: "VN.EN",
     title: "Entrega",
     path: "/uploads/entrega",

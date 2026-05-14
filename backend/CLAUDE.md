@@ -60,7 +60,7 @@ app/modules/{categoria}/{modulo}/{accion}/
 
 Ejemplo: `socios_negocio/datos_maestros/activar_desactivar/` solo acepta `CardCode`, `Valid`, `Frozen` — cualquier otra columna del Excel se rechaza por Pydantic. Para agregar una segunda acción al mismo módulo, se crea otra subcarpeta hermana (`socios_negocio/datos_maestros/cambio_cartera/`, etc.) y se registra como handler aparte en `HANDLERS`.
 
-Los módulos sin implementar (Cotización de Compras, Factura de Proveedores, Nota de Venta, Entrega) **no tienen scaffolding** — sus carpetas no existen. Se crean directo bajo este modelo cuando se implementen.
+El único módulo sin implementar (Factura de Proveedores) **no tiene scaffolding** — su carpeta no existe. Se crea directo bajo este modelo cuando se desbloquee.
 
 ---
 
@@ -373,7 +373,6 @@ Los módulos UDO (Datos Maestros, Gestión de Clientes, Log de Precios) usan **P
 | **Nota de Venta — Cancelar boleta** | ✅ | POST `Invoices({DocEntry})/Cancel` (Pedro-grounded en `boletas.cancel_boleta`) |
 | **Nota de Venta — Cambio de libro** | ✅ | PATCH `Invoices` con `U_IX_Ind='NT'` (Pedro-grounded en `boletas.cambio_libro`) |
 | **Entrega — Crear desde folio** | ✅ | POST `DeliveryNotes` desde factura por folio '33' (Pedro-grounded en `entrega.add_multi_entrega`) |
-| Cotización de Compras | ⬜ | sin scaffolding |
 | Factura de Proveedores | ⬜ | bloqueado por repo de Pedro |
 
 ---
