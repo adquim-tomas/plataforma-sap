@@ -107,7 +107,7 @@ export function UploadPreview({
               <thead className="border-b border-border-strong bg-elev">
                 <tr>
                   <th className="border-r border-border px-3 py-2 text-left">
-                    <Label>row</Label>
+                    <Label>fila</Label>
                   </th>
                   {preview.headers.map((h) => (
                     <th

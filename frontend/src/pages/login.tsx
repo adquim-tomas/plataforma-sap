@@ -164,7 +164,7 @@ export function LoginPage() {
           {/* Status row */}
           <div className="grid grid-cols-2 gap-2 border-t border-border px-5 py-2 text-[0.7rem]">
             <div className="flex items-center gap-2">
-              <span className="text-muted-foreground">status</span>
+              <span className="text-muted-foreground">estado</span>
               <span className="flex items-center gap-1.5 text-muted-foreground">
                 <HeartbeatDot kind="ok" still />
                 listo

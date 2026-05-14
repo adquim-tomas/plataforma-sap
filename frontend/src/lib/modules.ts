@@ -128,7 +128,7 @@ const QUITAR_FOLIO_HELP: ActionHelp = {
     "DocEntry debe existir en SAP — si no existe, la fila falla.",
     "La operación setea FolioPrefixString y FolioNumber en null en una sola pasada.",
     "El cambio se aplica solo a la factura indicada — otras facturas no se tocan.",
-    "Si necesitás identificar el DocEntry desde el FolioNumber, hacelo en SAP antes de armar el Excel.",
+    "Si necesitas identificar el DocEntry desde el FolioNumber, hazlo en SAP antes de armar el Excel.",
   ],
   templateFilename: "quitar_folio_template.xlsx",
 }
@@ -148,7 +148,7 @@ const CANCELAR_BOLETA_HELP: ActionHelp = {
   businessRules: [
     "DocEntry debe existir en SAP — si no existe, la fila falla.",
     "Operación irreversible: SAP genera el documento de cancelación y queda registrado contablemente.",
-    "Una fila del Excel = una factura cancelada. Verificá el listado en el preview antes de confirmar.",
+    "Una fila del Excel = una factura cancelada. Verifica el listado en el preview antes de confirmar.",
   ],
   templateFilename: "cancelar_boleta_template.xlsx",
 }
@@ -247,7 +247,7 @@ const CREAR_SERVICIO_HELP: ActionHelp = {
 
 const AGREGAR_PRECIO_HELP: ActionHelp = {
   description:
-    "Agrega una línea nueva al log de precios de un cliente (NX_LOGPRECIOS) existente. SAP appendea la línea a NX_LOGDETALLECollection. IVA y total se calculan en el servidor — no los entregas vos.",
+    "Agrega una línea nueva al log de precios de un cliente (NX_LOGPRECIOS) existente. SAP appendea la línea a NX_LOGDETALLECollection. IVA y total se calculan en el servidor — no los entregas tú.",
   columns: [
     {
       name: "Code",
@@ -554,7 +554,7 @@ const ACTUALIZAR_ESP_HELP: ActionHelp = {
     "El Code debe corresponder a un NX_GCLIENTE existente.",
     "La línea LineId debe existir; para crear una línea nueva usar 'Agregar línea'.",
     "Esta acción solo modifica U_LMM_ESP — los otros campos de la línea quedan intactos.",
-    "Si necesitás cambiar margen + ESP juntos en una pasada, usar 'Actualizar margen + TP precio'.",
+    "Si necesitas cambiar margen + ESP juntos en una pasada, usar 'Actualizar margen + TP precio'.",
   ],
   templateFilename: "actualizar_esp_template.xlsx",
 }
@@ -921,7 +921,7 @@ const ACTIVAR_DESACTIVAR_HELP: ActionHelp = {
       type: "enum",
       required: false,
       description:
-        "Flag de socio bloqueado. Valores admitidos: tYES o tNO. Si lo completás, el opuesto se aplica a Valid automáticamente.",
+        "Flag de socio bloqueado. Valores admitidos: tYES o tNO. Si lo completas, el opuesto se aplica a Valid automáticamente.",
       example: "tNO",
     },
   ],

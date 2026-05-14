@@ -1,4 +1,4 @@
-import { useLocation } from "react-router-dom"
+import { NavLink, useLocation } from "react-router-dom"
 
 import { HeartbeatDot } from "@/components/atoms/HeartbeatDot"
 import { Button } from "@/components/ui/button"
@@ -61,9 +61,9 @@ export function StatusBar() {
     >
       {/* Izquierda — brand */}
       <div className="flex items-center gap-2">
-        <span className="font-bold tracking-[0.14em] text-foreground">
+        <NavLink to={"/"} className="font-bold tracking-[0.14em] text-foreground">
           ADQUIM
-        </span>
+        </NavLink>
         {/* <span className="text-muted-foreground">·</span> */}
         {/* <span className="text-muted-foreground">v1.0</span> */}
       </div>

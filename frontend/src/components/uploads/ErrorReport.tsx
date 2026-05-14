@@ -34,19 +34,19 @@ export function ErrorReport({ errors }: ErrorReportProps) {
         role="row"
       >
         <HeaderCell>
-          <Label>row</Label>
+          <Label>fila</Label>
         </HeaderCell>
         <HeaderCell>
-          <Label>field</Label>
+          <Label>campo</Label>
         </HeaderCell>
         <HeaderCell>
-          <Label>source</Label>
+          <Label>origen</Label>
         </HeaderCell>
         <HeaderCell>
-          <Label>code</Label>
+          <Label>código</Label>
         </HeaderCell>
         <HeaderCell>
-          <Label>message</Label>
+          <Label>mensaje</Label>
         </HeaderCell>
       </div>
 

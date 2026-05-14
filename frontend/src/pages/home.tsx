@@ -67,9 +67,9 @@ export function HomePage() {
       {/* Greeting line */}
       <div className="flex items-baseline justify-between border-b border-border pb-3">
         <div>
-          <Label>operations dashboard</Label>
+          <Label>panel de operaciones</Label>
           <h1 className="mt-1 text-base font-medium tabular-nums">
-            <span className="text-muted-foreground">user</span>{" "}
+            <span className="text-muted-foreground">usuario</span>{" "}
             <span className="text-foreground">{payload?.sub ?? "—"}</span>
             <span className="mx-2 text-muted-foreground">·</span>
             <span className="text-muted-foreground">db</span>{" "}
@@ -89,7 +89,7 @@ export function HomePage() {
           lg:grid-cols-4
         "
       >
-        <KpiCell label="modules ready">
+        <KpiCell label="módulos listos">
           <span className="tabular-nums">
             <span className="text-2xl font-bold">{ready}</span>
             <span className="ml-1 text-base text-muted-foreground">
@@ -98,18 +98,18 @@ export function HomePage() {
           </span>
         </KpiCell>
 
-        <KpiCell label="handlers online">
+        <KpiCell label="controladores activos">
           <span className="text-2xl font-bold tabular-nums">{ready}</span>
         </KpiCell>
 
-        <KpiCell label="sap session">
+        <KpiCell label="sesión sap">
           <span className="flex items-center gap-2 text-base font-medium">
             <HeartbeatDot kind={sap.kind} />
             <span className={SAP_TEXT[sap.kind]}>{SAP_LABEL[sap.kind]}</span>
           </span>
         </KpiCell>
 
-        <KpiCell label="token expires">
+        <KpiCell label="token vence">
           <span className="text-2xl font-bold tabular-nums">{expiresIn}</span>
         </KpiCell>
       </section>
@@ -117,9 +117,9 @@ export function HomePage() {
       {/* Modules table */}
       <section>
         <div className="flex items-baseline justify-between pb-2">
-          <Label>modules</Label>
+          <Label>módulos</Label>
           <span className="text-[0.7rem] text-muted-foreground">
-            click an OK row to open
+            haz clic en una fila OK para abrir
           </span>
         </div>
         <div className="border border-border bg-background">
@@ -134,12 +134,12 @@ export function HomePage() {
             role="row"
           >
             <HeaderCell>#</HeaderCell>
-            <HeaderCell>code</HeaderCell>
-            <HeaderCell>module</HeaderCell>
-            <HeaderCell className="hidden md:flex">api</HeaderCell>
-            <HeaderCell>backend</HeaderCell>
-            <HeaderCell>ui</HeaderCell>
-            <HeaderCell>last run</HeaderCell>
+            <HeaderCell>código</HeaderCell>
+            <HeaderCell>módulo</HeaderCell>
+            <HeaderCell className="hidden md:flex">acciones</HeaderCell>
+            <HeaderCell>servidor</HeaderCell>
+            <HeaderCell>interfaz</HeaderCell>
+            <HeaderCell>última ejecución</HeaderCell>
           </div>
 
           {/* Rows */}

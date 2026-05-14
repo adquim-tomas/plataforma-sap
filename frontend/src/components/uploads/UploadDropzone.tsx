@@ -61,7 +61,7 @@ export function UploadDropzone({ onFile, disabled = false }: UploadDropzoneProps
       >
         <Label className="text-foreground">arrastrar excel</Label>
         <span className="text-[0.74rem] text-muted-foreground">
-          o hacer <strong>click</strong> para seleccionar — formatos: .xlsx, .xls
+          o hacer <strong>clic</strong> para seleccionar — formatos: .xlsx, .xls
         </span>
         <input
           ref={inputRef}
