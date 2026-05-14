@@ -30,10 +30,9 @@ Apodo del sistema: **Bitácora** (registro de operaciones — apto al dominio: c
 1. **Densidad lectora** — una pantalla muestra mucho, sin scroll innecesario. La gente que vive en Excel quiere ver todo en una mirada.
 2. **Color codifica estado, no decora** — verde `--ok`, ámbar `--warn`, rojo `--fail`. Cyan `--primary` para foco/links/marca. El resto: escala de grises slate.
 3. **Una sola voz tipográfica** — JetBrains Mono Variable en todo. Jerarquía por **peso + tamaño**, no por familia.
-4. **Status visible siempre** — `StatusBar` superior y `CommandBar` inferior siempre presentes. `usuario · company.db · hora · sap● · keyboard hints`.
-5. **Pistas de teclado a la vista** — cada vista expone los hints relevantes (`[ENTER]`, `[ESC]`, `[/]` index). Los handlers reales son follow-up; los hints sientan el tono operativo.
-6. **Idioma** — Español neutro
-7. **Vocabulario de negocio, no de implementación** — la audiencia son operadores que viven en Excel y conocen SAP, no desarrolladores. La densidad terminal aplica al *layout* (info densa, sin tarjetas, hairlines), **no al *vocabulario***.
+4. **Status visible siempre** — `StatusBar` superior siempre presente. `usuario · company.db · hora · sap●`.
+5. **Idioma** — Español neutro
+6. **Vocabulario de negocio, no de implementación** — la audiencia son operadores que viven en Excel y conocen SAP, no desarrolladores. La densidad terminal aplica al *layout* (info densa, sin tarjetas, hairlines), **no al *vocabulario***.
 
 ### Audiencia y copy de las páginas de módulo
 
@@ -87,17 +86,14 @@ Light mode es la **dirección canónica**. El dark mode existe declarado en `.da
 │ Sidebar│                                                                 │
 │ 240px  │   <Outlet />   (denso, tabular, sin "tarjetas")                 │
 │        │                                                                 │
-├────────┴─────────────────────────────────────────────────────────────────┤
-│ CommandBar         24px        [/] index   [ESC] back   [?] help        │
-└──────────────────────────────────────────────────────────────────────────┘
+└────────┴─────────────────────────────────────────────────────────────────┘
 ```
 
 | Componente | Path | Responsabilidad |
 |-----------|------|-----------------|
 | `StatusBar` | `src/components/layout/StatusBar.tsx` | Barra superior fija (28px). Brand + breadcrumb + sesión + heartbeat + clock viva (1s tick). |
 | `Sidebar` | `src/components/layout/Sidebar.tsx` | Rail izquierdo (240px). Una fila por módulo: roman + code + título + StatusPill. Active = border-left cyan + bg-surface. |
-| `CommandBar` | `src/components/layout/CommandBar.tsx` | Barra inferior fija (24px). Keyboard hints estáticos por defecto, override por página vía prop. |
-| `AppShell` | `src/components/layout/AppShell.tsx` | Composición de los tres anteriores + `<Outlet />`. |
+| `AppShell` | `src/components/layout/AppShell.tsx` | Composición de `StatusBar` + `Sidebar` + `<Outlet />`. |
 
 ### Atomos
 
@@ -106,7 +102,6 @@ Light mode es la **dirección canónica**. El dark mode existe declarado en `.da
 | `Label` | `src/components/atoms/Label.tsx` | All-caps tracked text-[0.62rem]. Para column headers, captions. |
 | `StatusPill` | `src/components/atoms/StatusPill.tsx` | Pill 18px alto, variantes `ok/pending/fail/partial/info`. Solo semántica, no decoración. |
 | `HeartbeatDot` | `src/components/atoms/HeartbeatDot.tsx` | 7px círculo pulsante (CSS keyframe). Variantes `ok/fail/pending`. Prop `still` desactiva la animación. |
-| `KbdHint` + `KbdAction` | `src/components/atoms/KbdHint.tsx` | `<kbd>` con borde + label muted. `KbdAction` es el patrón `[KEY] descripción`. |
 | `SapHeartbeat` | `src/components/atoms/SapHeartbeat.tsx` | `HeartbeatDot` vivo — refleja la sesión SAP del backend vía `useSapHealth()`. Verde/rojo/gris real. |
 
 ### Tipografía
@@ -199,17 +194,16 @@ Para módulos no implementados (`implemented: false`), `actions` es `undefined` 
 | Template Vite base | ✅ | Eliminado |
 | Tailwind 4 + Bitácora tokens | ✅ | `index.css` reescrito |
 | Design System (Bitácora) | ✅ | Light canónico, paleta slate + cyan + statuses |
-| StatusBar / Sidebar / CommandBar / AppShell | ✅ | Layout terminal denso |
+| StatusBar / Sidebar / AppShell | ✅ | Layout terminal denso |
 | Routing base (react-router-dom v7) | ✅ | 4 rutas en `router.tsx` |
 | Auth (login + JWT en localStorage) | ✅ | `AuthProvider`, `useAuth`, `RequireAuth` |
 | API client (axios + 401 redirect) | ✅ | `lib/api.ts` |
-| Atomos (Label, StatusPill, HeartbeatDot, KbdHint, SapHeartbeat) | ✅ | SapHeartbeat consume `useSapHealth()` |
+| Atomos (Label, StatusPill, HeartbeatDot, SapHeartbeat) | ✅ | SapHeartbeat consume `useSapHealth()` |
 | Login page (terminal init prompt) | ✅ | dots decorativos quedan `still` |
 | Home page (KPI strip + modules table) | ✅ | TOKEN EXPIRES cuenta atrás c/segundo · SAP SESSION en vivo |
 | ModulePlaceholder (spec sheet) | ✅ | |
 | 404 page (route not registered) | ✅ | |
 | **SAP heartbeat real** | ✅ | hook `useSapHealth` (15s polling, pausa con visibilitychange) → backend `GET /api/v1/health/sap` |
-| Keyboard shortcuts handlers | ⬜ | hints visibles, sin behavior |
 | GET batches / audit | ⬜ | LAST RUN queda en `—` hasta que backend exponga |
 | UploadDropzone / UploadPreview / UploadSummary / ErrorReport / UploadPanel (shared) | ✅ | en `src/components/uploads/` — reutilizables por todos los módulos |
 | Preview pre-subida (parsing cliente + chequeo de columnas obligatorias + confirmación) | ✅ | `previewExcel()` en `lib/excel.ts` (read-excel-file). `ModuleSchema` por módulo en `lib/routes.ts` define `requiredColumns` |

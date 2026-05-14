@@ -1,4 +1,4 @@
 # TODO
 
-- DRY vista modulos [ignorar]
+- DRY vista modulos
 - Corregir stack de ruta

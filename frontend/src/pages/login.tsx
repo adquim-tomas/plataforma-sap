@@ -6,11 +6,24 @@ import { HeartbeatDot } from "@/components/atoms/HeartbeatDot"
 import { Label } from "@/components/atoms/Label"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth"
+import { useSapHealth } from "@/lib/useSapHealth"
 
 const COMPANY_DBS = ["CLPRDADQUIM", "CLTSTADQUIM"]
 
 interface LocationState {
   from?: { pathname: string }
+}
+
+const SAP_LABEL: Record<"ok" | "fail" | "pending", string> = {
+  ok: "online",
+  fail: "offline",
+  pending: "verificando",
+}
+
+const SAP_TEXT: Record<"ok" | "fail" | "pending", string> = {
+  ok: "text-ok",
+  fail: "text-fail",
+  pending: "text-muted-foreground",
 }
 
 /**
@@ -22,6 +35,7 @@ export function LoginPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const from = (location.state as LocationState | null)?.from?.pathname ?? "/"
+  const sap = useSapHealth()
 
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
@@ -69,7 +83,7 @@ export function LoginPage() {
       <div className="flex h-7 items-center justify-between border-b border-border-strong bg-background px-4 text-[0.74rem]">
         <span className="font-bold tracking-[0.14em]">ADQUIM</span>
         <span className="flex items-center gap-1.5 text-muted-foreground">
-          <HeartbeatDot kind="ok" still />
+          <HeartbeatDot kind={sap.kind} still />
           <span className="text-[0.7rem] text-muted-foreground">SAP endpoint</span>
         </span>
       </div>
@@ -166,13 +180,9 @@ export function LoginPage() {
             <div className="flex items-center gap-2">
               <span className="text-muted-foreground">estado</span>
               <span className="flex items-center gap-1.5 text-muted-foreground">
-                <HeartbeatDot kind="ok" still />
-                listo
+                <HeartbeatDot kind={sap.kind} />
+                <span className={SAP_TEXT[sap.kind]}>{SAP_LABEL[sap.kind]}</span>
               </span>
-            </div>
-            <div className="flex items-center justify-end gap-2">
-              <span className="text-muted-foreground">vence</span>
-              <span className="text-foreground">~60m post-auth</span>
             </div>
           </div>
 
@@ -199,11 +209,6 @@ export function LoginPage() {
           </div>
         </form>
       </main>
-
-      {/* Bottom mini command bar */}
-      <div className="flex h-6 items-center gap-5 border-t border-border bg-elev px-4 text-[0.7rem] text-muted-foreground">
-        <span className="ml-auto">adquim · SAP B1 service layer</span>
-      </div>
     </div>
   )
 }

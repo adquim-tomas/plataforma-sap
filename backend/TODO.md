@@ -1,3 +1,3 @@
 # TODO
 
-- DRY modulos [ignorar]
+- DRY modulos

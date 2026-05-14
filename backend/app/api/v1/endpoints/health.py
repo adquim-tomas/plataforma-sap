@@ -12,7 +12,7 @@ from app.core.sap_instance import sap_service
 router = APIRouter(prefix="/health", tags=["health"])
 logger = logging.getLogger(__name__)
 
-PING_TIMEOUT_SECONDS = 3.0
+PING_TIMEOUT_SECONDS = 8.0
 
 
 class SapHealth(BaseModel):
