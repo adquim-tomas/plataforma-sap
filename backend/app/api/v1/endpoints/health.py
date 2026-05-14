@@ -15,6 +15,12 @@ logger = logging.getLogger(__name__)
 PING_TIMEOUT_SECONDS = 8.0
 
 
+@router.get("")
+async def liveness() -> dict[str, bool]:
+    # Probe trivial para Container Apps: no toca SAP ni DB.
+    return {"ok": True}
+
+
 class SapHealth(BaseModel):
     ok: bool
     code: Literal["ok", "auth", "connection", "timeout", "error"] = "ok"

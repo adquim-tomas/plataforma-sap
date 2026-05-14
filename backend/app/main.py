@@ -37,7 +37,9 @@ async def lifespan(app: FastAPI):
     logger.info("Database migrations applied")
 
 
-    # Startup: conectar service account a SAP
+    # Startup: conectar service account a SAP.
+    # No bloqueamos el arranque si SAP está caído: /api/v1/health/sap reporta el estado
+    # y cada llamada concreta reintenta login si la sesión no está válida.
     try:
         await sap_service.login(
             settings.SAP_COMPANY_DB,
@@ -45,15 +47,20 @@ async def lifespan(app: FastAPI):
             settings.SAP_SERVICE_PASSWORD,
         )
         logger.info("SAP service account connected")
-    except SAPAuthError:
-        logger.error("SAP service account credentials are invalid — check .env")
-        raise
+    except SAPError as exc:
+        logger.warning(
+            "SAP service account login failed at startup (%s); app continues, will retry on demand",
+            exc,
+        )
 
     yield  # app corriendo
 
     # Shutdown: cerrar sesión SAP limpiamente
-    await sap_service.logout()
-    logger.info("SAP service account disconnected")
+    try:
+        await sap_service.logout()
+        logger.info("SAP service account disconnected")
+    except SAPError as exc:
+        logger.warning("SAP logout failed at shutdown: %s", exc)
 
 
 app = FastAPI(
@@ -64,7 +71,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],  # Vite dev server
+    allow_origins=settings.allowed_origins_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
