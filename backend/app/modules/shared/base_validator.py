@@ -183,15 +183,24 @@ class SAPValidator:
         """
         Verifica que una línea (LineId) exista dentro de NX_DETCLIENTECollection
         del header NX_GCLIENTE('{code}').
+
+        No usamos `$select=NX_DETCLIENTECollection`: el Service Layer de SAP B1
+        no siempre incluye la colección cuando se proyecta por nombre — trae
+        la entidad completa y la colección viene inline (comportamiento por
+        defecto para UDO). LineId se castea a int por si SAP lo devuelve
+        como string.
         """
         try:
-            data = await sap.get(
-                f"NX_GCLIENTE('{code}')",
-                params={"$select": "NX_DETCLIENTECollection"},
-            )
+            data = await sap.get(f"NX_GCLIENTE('{code}')")
         except SAPNotFoundError:
             return False
-        return any(
-            line.get("LineId") == line_id
-            for line in data.get("NX_DETCLIENTECollection", [])
-        )
+        for line in data.get("NX_DETCLIENTECollection", []):
+            raw = line.get("LineId")
+            if raw is None:
+                continue
+            try:
+                if int(raw) == line_id:
+                    return True
+            except (TypeError, ValueError):
+                continue
+        return False

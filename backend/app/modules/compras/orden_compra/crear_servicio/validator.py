@@ -1,4 +1,5 @@
 from app.core.sap_client import SAPClient
+from app.modules.shared.base_schema import BusinessError
 from app.modules.shared.base_validator import SAPValidator
 from app.modules.compras.orden_compra.crear_servicio.schema import CrearServicioRow
 
@@ -12,25 +13,28 @@ class CrearServicioValidator:
     """
 
     @staticmethod
-    async def validate(sap: SAPClient, row: CrearServicioRow) -> list[str]:
-        errors: list[str] = []
+    async def validate(sap: SAPClient, row: CrearServicioRow) -> list[BusinessError]:
+        errors: list[BusinessError] = []
 
         if not await SAPValidator.card_code_exists(sap, row.CardCode):
-            errors.append(
+            errors.append((
+                "CardCode",
                 f"CardCode '{row.CardCode}' no existe en SAP — el proveedor "
-                "debe estar registrado antes de generar OCs."
-            )
+                "debe estar registrado antes de generar OCs.",
+            ))
 
         if not await SAPValidator.sales_person_exists(sap, row.Encargado):
-            errors.append(
+            errors.append((
+                "Encargado",
                 f"Encargado {row.Encargado} no existe o no está activo en "
-                "SalesPersons."
-            )
+                "SalesPersons.",
+            ))
 
         if not await SAPValidator.account_code_exists(sap, row.Cuenta):
-            errors.append(
+            errors.append((
+                "Cuenta",
                 f"Cuenta contable '{row.Cuenta}' no existe en el plan de "
-                "cuentas SAP."
-            )
+                "cuentas SAP.",
+            ))
 
         return errors

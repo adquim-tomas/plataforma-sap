@@ -1,4 +1,5 @@
 from app.core.sap_client import SAPClient
+from app.modules.shared.base_schema import BusinessError
 from app.modules.shared.base_validator import SAPValidator
 from app.modules.socios_negocio.gestion_clientes.actualizar_margen_tp.schema import (
     ActualizarMargenTPRow,
@@ -8,20 +9,22 @@ from app.modules.socios_negocio.gestion_clientes.actualizar_margen_tp.schema imp
 class ActualizarMargenTPValidator:
 
     @staticmethod
-    async def validate(sap: SAPClient, row: ActualizarMargenTPRow) -> list[str]:
-        errors: list[str] = []
+    async def validate(sap: SAPClient, row: ActualizarMargenTPRow) -> list[BusinessError]:
+        errors: list[BusinessError] = []
 
         if not await SAPValidator.nx_gcliente_exists(sap, row.Code):
-            errors.append(
+            errors.append((
+                "Code",
                 f"NX_GCLIENTE con Code '{row.Code}' no existe — "
-                "esta acción solo actualiza líneas de clientes registrados."
-            )
+                "esta acción solo actualiza líneas de clientes registrados.",
+            ))
             return errors
 
         if not await SAPValidator.nx_gcliente_line_exists(sap, row.Code, row.LineId):
-            errors.append(
+            errors.append((
+                "LineId",
                 f"La línea LineId={row.LineId} no existe en NX_GCLIENTE('{row.Code}'). "
-                "Para crear una línea nueva usar la acción 'Agregar línea'."
-            )
+                "Para crear una línea nueva usar la acción 'Agregar línea'.",
+            ))
 
         return errors

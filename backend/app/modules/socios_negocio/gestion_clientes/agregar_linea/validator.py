@@ -1,4 +1,5 @@
 from app.core.sap_client import SAPClient
+from app.modules.shared.base_schema import BusinessError
 from app.modules.shared.base_validator import SAPValidator
 from app.modules.socios_negocio.gestion_clientes.agregar_linea.schema import (
     AgregarLineaRow,
@@ -13,13 +14,14 @@ class AgregarLineaValidator:
     """
 
     @staticmethod
-    async def validate(sap: SAPClient, row: AgregarLineaRow) -> list[str]:
-        errors: list[str] = []
+    async def validate(sap: SAPClient, row: AgregarLineaRow) -> list[BusinessError]:
+        errors: list[BusinessError] = []
 
         if not await SAPValidator.nx_gcliente_exists(sap, row.Code):
-            errors.append(
+            errors.append((
+                "Code",
                 f"NX_GCLIENTE con Code '{row.Code}' no existe — "
-                "este módulo solo agrega líneas a clientes registrados."
-            )
+                "este módulo solo agrega líneas a clientes registrados.",
+            ))
 
         return errors

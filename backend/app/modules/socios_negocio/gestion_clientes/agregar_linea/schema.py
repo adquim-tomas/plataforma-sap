@@ -1,4 +1,4 @@
-from pydantic import ConfigDict, Field, field_validator, model_validator
+from pydantic import ConfigDict, Field, model_validator
 
 from app.modules.shared.base_schema import RowBase
 
@@ -31,7 +31,9 @@ class AgregarLineaRow(RowBase):
     """
     Una fila = una línea de NX_DETCLIENTECollection del cliente `Code`.
 
-    Obligatorios: `Code` (CardCode del header) y `LineId` (id de la línea).
+    Obligatorios: `Code` (identificador del header NX_GCLIENTE, formato
+    `{CardCode}-{N}` — CardCode más un correlativo de sucursal) y `LineId`
+    (id de la línea).
     Los demás son opcionales — al menos uno debe tener valor para que la
     fila represente un cambio real.
     """
@@ -42,11 +44,11 @@ class AgregarLineaRow(RowBase):
     )
 
     # ── Identificadores ───────────────────────────────────────────────────────
-    Code:   str = Field(..., description="CardCode del cliente (header NX_GCLIENTE)")
+    Code:   str = Field(..., description="Code del header NX_GCLIENTE — formato CardCode + guion + correlativo de sucursal (p. ej. CN12345678-9-3), no es el CardCode pelado")
     LineId: int = Field(..., ge=0, description="Identificador de la línea dentro de NX_DETCLIENTECollection")
 
     # ── Campos de línea (opcionales) ──────────────────────────────────────────
-    U_NX_Margen:                float | None = Field(default=None, description="Margen como decimal entre 0 y 1")
+    U_NX_Margen:                float | None = Field(default=None, description="Margen comercial (decimal — 0.25 = 25%)")
     U_NX_Capacidad:             str   | None = None
     U_NX_CodArt:                str   | None = None
     U_LMM_ESP:                  str   | None = Field(default=None, description="Tipo de precio (ESP)")
@@ -59,18 +61,6 @@ class AgregarLineaRow(RowBase):
     U_LMM_Formato:              str   | None = Field(default=None, description="Solo aplica a clientes de tipo adclean")
 
     # ── Validators ────────────────────────────────────────────────────────────
-
-    @field_validator("U_NX_Margen")
-    @classmethod
-    def validar_margen_range(cls, v: float | None) -> float | None:
-        if v is None:
-            return v
-        if not 0 <= v <= 1:
-            raise ValueError(
-                f"U_NX_Margen debe estar entre 0 y 1 (recibido: {v}). "
-                "Usar formato decimal — 25% se escribe 0.25."
-            )
-        return v
 
     @model_validator(mode="after")
     def validar_al_menos_un_campo(self) -> "AgregarLineaRow":

@@ -2,6 +2,13 @@ from enum import Enum
 
 from pydantic import BaseModel, ConfigDict
 
+# Par (campo, mensaje) que devuelve la validación de negocio de una fila.
+# `field` apunta al campo del schema responsable del error (ej. "Code",
+# "LineId"); si el error no tiene un campo culpable claro, es None y la UI
+# muestra `—` en la columna CAMPO. Usar el nombre exacto del campo Pydantic
+# para que el operador pueda mapearlo con la columna del Excel.
+BusinessError = tuple[str | None, str]
+
 
 class RowBase(BaseModel):
     """

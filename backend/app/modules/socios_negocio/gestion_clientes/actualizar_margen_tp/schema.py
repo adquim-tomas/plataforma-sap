@@ -1,4 +1,4 @@
-from pydantic import ConfigDict, Field, field_validator
+from pydantic import ConfigDict, Field
 
 from app.modules.shared.base_schema import RowBase
 
@@ -7,7 +7,7 @@ from app.modules.shared.base_schema import RowBase
 # Equivalente a `MargenChange.updateMargenadquimTPprecio_margen` /
 # `updateManyMargenadquimTPprecio_margen` en `classmargen.py` de Pedro.
 # Actualiza dos campos en simultáneo de una línea ya existente:
-#   - U_NX_Margen  (margen comercial, decimal 0-1)
+#   - U_NX_Margen  (margen comercial, formato decimal — 0.25 = 25%)
 #   - U_LMM_ESP    (tipo de precio / "TP Precio")
 #
 # Es **estrictamente** edición de línea existente: la operación asume que el
@@ -22,17 +22,7 @@ class ActualizarMargenTPRow(RowBase):
         populate_by_name=True,
     )
 
-    Code:        str = Field(..., description="CardCode del cliente (header NX_GCLIENTE)")
+    Code:        str = Field(..., description="Code del header NX_GCLIENTE — formato CardCode + guion + correlativo de sucursal (p. ej. CN12345678-9-3), no es el CardCode pelado")
     LineId:      int = Field(..., ge=0, description="Identificador de la línea a modificar")
-    U_NX_Margen: float = Field(..., description="Margen como decimal entre 0 y 1 (25% = 0.25)")
+    U_NX_Margen: float = Field(..., description="Margen comercial (decimal — 0.25 = 25%)")
     U_LMM_ESP:   str = Field(..., min_length=1, description="Tipo de precio (TP Precio)")
-
-    @field_validator("U_NX_Margen")
-    @classmethod
-    def validar_margen_range(cls, v: float) -> float:
-        if not 0 <= v <= 1:
-            raise ValueError(
-                f"U_NX_Margen debe estar entre 0 y 1 (recibido: {v}). "
-                "Usar formato decimal — 25% se escribe 0.25."
-            )
-        return v

@@ -20,4 +20,4 @@ class EliminarClienteRow(RowBase):
         populate_by_name=True,
     )
 
-    Code: str = Field(..., min_length=1, description="CardCode del cliente NX_GCLIENTE a eliminar")
+    Code: str = Field(..., min_length=1, description="Code del header NX_GCLIENTE a eliminar — formato CardCode + guion + correlativo de sucursal (p. ej. CN12345678-9-3), no es el CardCode pelado")

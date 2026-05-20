@@ -1,6 +1,6 @@
 from app.core.sap_client import SAPClient
 from app.modules.shared.base_router import BaseUploadHandler
-from app.modules.shared.base_schema import RowValidationError
+from app.modules.shared.base_schema import BusinessError, RowValidationError
 from app.modules.ventas.nota_venta.cancelar_boleta.sap_service import (
     CancelarBoletaSAPService,
 )
@@ -22,16 +22,17 @@ class CancelarBoletaHandler(BaseUploadHandler[CancelarBoletaRow]):
     def sap_module(self) -> str:
         return "ventas/nota_venta/cancelar_boleta"
 
-    async def validate(self, sap: SAPClient, row: CancelarBoletaRow) -> list[str]:
+    async def validate(self, sap: SAPClient, row: CancelarBoletaRow) -> list[BusinessError]:
         return await CancelarBoletaValidator.validate(sap, row)
 
     async def sync_row(self, sap: SAPClient, row: CancelarBoletaRow) -> None:
         business_errors = await self.validate(sap, row)
         if business_errors:
+            field, message = business_errors[0]
             raise RowValidationError(
-                " | ".join(business_errors),
+                message,
                 code="business_validation",
-                field="DocEntry",
+                field=field,
             )
 
         await CancelarBoletaSAPService.cancel(sap, row)

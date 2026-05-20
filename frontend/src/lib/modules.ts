@@ -455,8 +455,8 @@ const ACTUALIZAR_MARGEN_TP_HELP: ActionHelp = {
       name: "Code",
       type: "str",
       required: true,
-      description: "CardCode del cliente (identifica el header NX_GCLIENTE).",
-      example: "CN12345678-9",
+      description: "Code del header NX_GCLIENTE. NO es el CardCode pelado: es el CardCode más un guion y un correlativo de sucursal (p. ej. CN12345678-9-3).",
+      example: "CN12345678-9-3",
     },
     {
       name: "LineId",
@@ -469,7 +469,7 @@ const ACTUALIZAR_MARGEN_TP_HELP: ActionHelp = {
       name: "U_NX_Margen",
       type: "float",
       required: true,
-      description: "Margen como decimal entre 0 y 1 (25% se escribe 0.25).",
+      description: "Margen comercial.",
       example: "0.18",
     },
     {
@@ -483,7 +483,6 @@ const ACTUALIZAR_MARGEN_TP_HELP: ActionHelp = {
   businessRules: [
     "El Code debe corresponder a un NX_GCLIENTE existente.",
     "La línea LineId debe existir; para crear una línea nueva usar 'Agregar línea'.",
-    "U_NX_Margen va siempre como decimal entre 0 y 1, nunca como porcentaje 0–100.",
     "Esta acción solo modifica U_NX_Margen + U_LMM_ESP — los otros campos de la línea quedan intactos.",
   ],
   templateFilename: "actualizar_margen_tp_template.xlsx",
@@ -497,8 +496,8 @@ const ACTUALIZAR_NC_HELP: ActionHelp = {
       name: "Code",
       type: "str",
       required: true,
-      description: "CardCode del cliente (identifica el header NX_GCLIENTE).",
-      example: "CN12345678-9",
+      description: "Code del header NX_GCLIENTE. NO es el CardCode pelado: es el CardCode más un guion y un correlativo de sucursal (p. ej. CN12345678-9-3).",
+      example: "CN12345678-9-3",
     },
     {
       name: "LineId",
@@ -532,8 +531,8 @@ const ACTUALIZAR_ESP_HELP: ActionHelp = {
       name: "Code",
       type: "str",
       required: true,
-      description: "CardCode del cliente (identifica el header NX_GCLIENTE).",
-      example: "CN12345678-9",
+      description: "Code del header NX_GCLIENTE. NO es el CardCode pelado: es el CardCode más un guion y un correlativo de sucursal (p. ej. CN12345678-9-3).",
+      example: "CN12345678-9-3",
     },
     {
       name: "LineId",
@@ -567,8 +566,8 @@ const ELIMINAR_CLIENTE_HELP: ActionHelp = {
       name: "Code",
       type: "str",
       required: true,
-      description: "CardCode del cliente NX_GCLIENTE a eliminar.",
-      example: "CN12345678-9",
+      description: "Code del header NX_GCLIENTE a eliminar. NO es el CardCode pelado: es el CardCode más un guion y un correlativo de sucursal (p. ej. CN12345678-9-3).",
+      example: "CN12345678-9-3",
     },
   ],
   businessRules: [
@@ -588,8 +587,8 @@ const AGREGAR_LINEA_HELP: ActionHelp = {
       name: "Code",
       type: "str",
       required: true,
-      description: "CardCode del cliente (identifica el header NX_GCLIENTE).",
-      example: "CN12345678-9",
+      description: "Code del header NX_GCLIENTE. NO es el CardCode pelado: es el CardCode más un guion y un correlativo de sucursal (p. ej. CN12345678-9-3).",
+      example: "CN12345678-9-3",
     },
     {
       name: "LineId",
@@ -602,7 +601,7 @@ const AGREGAR_LINEA_HELP: ActionHelp = {
       name: "U_NX_Margen",
       type: "float",
       required: false,
-      description: "Margen como decimal entre 0 y 1. Ejemplo: 25% se escribe 0.25.",
+      description: "Margen comercial en formato decimal. Ejemplo: 25% se escribe 0.25.",
       example: "0.25",
     },
     {
@@ -680,7 +679,6 @@ const AGREGAR_LINEA_HELP: ActionHelp = {
     "El Code debe corresponder a un NX_GCLIENTE existente — esta acción no crea clientes nuevos.",
     "Al menos un campo opcional debe tener valor (si no, la fila no representa cambio).",
     "Si el LineId ya existe, los campos provistos pisan los anteriores. Los campos que no completes quedan como están.",
-    "U_NX_Margen va siempre como decimal entre 0 y 1, nunca como porcentaje 0–100.",
     "U_LMM_Sucural es typo intencional de SAP (sin 's' final) — escribir tal cual.",
     "Los campos NC (adquim) vs Precio_Estimado_Neto + Formato (adclean) son excluyentes según el tipo de cliente — usar los que correspondan a tu DB.",
   ],

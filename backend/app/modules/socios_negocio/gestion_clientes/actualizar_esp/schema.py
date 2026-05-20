@@ -15,6 +15,6 @@ class ActualizarEspRow(RowBase):
         populate_by_name=True,
     )
 
-    Code:      str = Field(..., description="CardCode del cliente (header NX_GCLIENTE)")
+    Code:      str = Field(..., description="Code del header NX_GCLIENTE — formato CardCode + guion + correlativo de sucursal (p. ej. CN12345678-9-3), no es el CardCode pelado")
     LineId:    int = Field(..., ge=0, description="Identificador de la línea a modificar")
     U_LMM_ESP: str = Field(..., min_length=1, description="Precio especial / tipo de precio")

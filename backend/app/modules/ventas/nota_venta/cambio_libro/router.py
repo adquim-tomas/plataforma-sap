@@ -1,6 +1,6 @@
 from app.core.sap_client import SAPClient
 from app.modules.shared.base_router import BaseUploadHandler
-from app.modules.shared.base_schema import RowValidationError
+from app.modules.shared.base_schema import BusinessError, RowValidationError
 from app.modules.ventas.nota_venta.cambio_libro.sap_service import (
     CambioLibroSAPService,
 )
@@ -20,16 +20,17 @@ class CambioLibroHandler(BaseUploadHandler[CambioLibroRow]):
     def sap_module(self) -> str:
         return "ventas/nota_venta/cambio_libro"
 
-    async def validate(self, sap: SAPClient, row: CambioLibroRow) -> list[str]:
+    async def validate(self, sap: SAPClient, row: CambioLibroRow) -> list[BusinessError]:
         return await CambioLibroValidator.validate(sap, row)
 
     async def sync_row(self, sap: SAPClient, row: CambioLibroRow) -> None:
         business_errors = await self.validate(sap, row)
         if business_errors:
+            field, message = business_errors[0]
             raise RowValidationError(
-                " | ".join(business_errors),
+                message,
                 code="business_validation",
-                field="DocEntry",
+                field=field,
             )
 
         await CambioLibroSAPService.update(sap, row)

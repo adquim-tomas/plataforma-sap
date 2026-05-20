@@ -1,6 +1,6 @@
 from app.core.sap_client import SAPClient
 from app.modules.shared.base_router import BaseUploadHandler
-from app.modules.shared.base_schema import RowValidationError
+from app.modules.shared.base_schema import BusinessError, RowValidationError
 from app.modules.socios_negocio.gestion_clientes.agregar_linea.sap_service import (
     AgregarLineaSAPService,
 )
@@ -22,16 +22,17 @@ class AgregarLineaHandler(BaseUploadHandler[AgregarLineaRow]):
     def sap_module(self) -> str:
         return "socios_negocio/gestion_clientes/agregar_linea"
 
-    async def validate(self, sap: SAPClient, row: AgregarLineaRow) -> list[str]:
+    async def validate(self, sap: SAPClient, row: AgregarLineaRow) -> list[BusinessError]:
         return await AgregarLineaValidator.validate(sap, row)
 
     async def sync_row(self, sap: SAPClient, row: AgregarLineaRow) -> None:
         business_errors = await self.validate(sap, row)
         if business_errors:
+            field, message = business_errors[0]
             raise RowValidationError(
-                " | ".join(business_errors),
+                message,
                 code="business_validation",
-                field="Code",
+                field=field,
             )
 
         await AgregarLineaSAPService.update(sap, row)

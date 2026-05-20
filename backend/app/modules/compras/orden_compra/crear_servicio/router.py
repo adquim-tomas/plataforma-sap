@@ -1,6 +1,6 @@
 from app.core.sap_client import SAPClient
 from app.modules.shared.base_router import BaseUploadHandler
-from app.modules.shared.base_schema import RowValidationError
+from app.modules.shared.base_schema import BusinessError, RowValidationError
 from app.modules.compras.orden_compra.crear_servicio.sap_service import (
     CrearServicioSAPService,
 )
@@ -22,16 +22,17 @@ class CrearServicioHandler(BaseUploadHandler[CrearServicioRow]):
     def sap_module(self) -> str:
         return "compras/orden_compra/crear_servicio"
 
-    async def validate(self, sap: SAPClient, row: CrearServicioRow) -> list[str]:
+    async def validate(self, sap: SAPClient, row: CrearServicioRow) -> list[BusinessError]:
         return await CrearServicioValidator.validate(sap, row)
 
     async def sync_row(self, sap: SAPClient, row: CrearServicioRow) -> None:
         business_errors = await self.validate(sap, row)
         if business_errors:
+            field, message = business_errors[0]
             raise RowValidationError(
-                " | ".join(business_errors),
+                message,
                 code="business_validation",
-                field="CardCode",
+                field=field,
             )
 
         await CrearServicioSAPService.create(sap, row)

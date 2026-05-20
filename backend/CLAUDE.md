@@ -179,8 +179,8 @@ Las acciones que modifican una dirección puntual de `BPAddresses` (`cambio_cart
 
 #### Gestión de Clientes — Agregar línea
 
-- Identificadores (obligatorios): `Code` (CardCode del header NX_GCLIENTE) + `LineId` (id de la línea en `NX_DETCLIENTECollection`).
-- Campos opcionales — al menos uno debe tener valor: `U_NX_Margen` (0-1), `U_NX_Capacidad`, `U_NX_CodArt`, `U_LMM_ESP`, `U_LMM_DescArt`, `U_LMM_Sucural` (**typo intencional, sin 's' final**), `U_LMM_Precio_Estimado`, `U_LMM_FI_SPOT`, `U_LMM_NC` (adquim), `U_LMM_Precio_Estimado_Neto` (adclean), `U_LMM_Formato` (adclean).
+- Identificadores (obligatorios): `Code` (Code del header NX_GCLIENTE — formato `{CardCode}-{N}` con `-N` = correlativo de sucursal; p. ej. `CN12345678-9-3`. **No** es el CardCode pelado) + `LineId` (id de la línea en `NX_DETCLIENTECollection`).
+- Campos opcionales — al menos uno debe tener valor: `U_NX_Margen` (decimal — 0.25 = 25%), `U_NX_Capacidad`, `U_NX_CodArt`, `U_LMM_ESP`, `U_LMM_DescArt`, `U_LMM_Sucural` (**typo intencional, sin 's' final**), `U_LMM_Precio_Estimado`, `U_LMM_FI_SPOT`, `U_LMM_NC` (adquim), `U_LMM_Precio_Estimado_Neto` (adclean), `U_LMM_Formato` (adclean).
 - Schema con `extra="forbid"`; los floats vienen tipados desde Pydantic v2 (coerción automática de string a float).
 - PATCH a `NX_GCLIENTE('{Code}')` con una sola entrada en `NX_DETCLIENTECollection`. SAP B1 hace upsert por LineId — si la línea existe se actualiza, si no se crea. Las demás líneas del cliente no se tocan.
 - Validador SAP: `nx_gcliente_exists` (header existe). No se valida existencia del LineId (la upsert decide).
@@ -197,7 +197,7 @@ Las acciones `actualizar_margen_tp`, `actualizar_nc` y `actualizar_esp` siguen e
 
 #### Gestión de Clientes — Actualizar margen + TP precio
 
-- Campos: `Code`, `LineId`, `U_NX_Margen` (0-1), `U_LMM_ESP`.
+- Campos: `Code`, `LineId`, `U_NX_Margen` (decimal — 0.25 = 25%), `U_LMM_ESP`.
 - PATCH: `U_NX_Margen` + `U_LMM_ESP` de la línea indicada.
 - Pedro: `MargenChange.updateMargenadquimTPprecio_margen`.
 

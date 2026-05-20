@@ -1,6 +1,6 @@
 from app.core.sap_client import SAPClient
 from app.modules.shared.base_router import BaseUploadHandler
-from app.modules.shared.base_schema import RowValidationError
+from app.modules.shared.base_schema import BusinessError, RowValidationError
 from app.modules.socios_negocio.gestion_clientes.actualizar_nc.sap_service import (
     ActualizarNcSAPService,
 )
@@ -22,16 +22,17 @@ class ActualizarNcHandler(BaseUploadHandler[ActualizarNcRow]):
     def sap_module(self) -> str:
         return "socios_negocio/gestion_clientes/actualizar_nc"
 
-    async def validate(self, sap: SAPClient, row: ActualizarNcRow) -> list[str]:
+    async def validate(self, sap: SAPClient, row: ActualizarNcRow) -> list[BusinessError]:
         return await ActualizarNcValidator.validate(sap, row)
 
     async def sync_row(self, sap: SAPClient, row: ActualizarNcRow) -> None:
         business_errors = await self.validate(sap, row)
         if business_errors:
+            field, message = business_errors[0]
             raise RowValidationError(
-                " | ".join(business_errors),
+                message,
                 code="business_validation",
-                field="Code",
+                field=field,
             )
 
         await ActualizarNcSAPService.update(sap, row)

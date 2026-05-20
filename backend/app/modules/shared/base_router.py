@@ -12,7 +12,12 @@ from sqlalchemy.orm import Session
 from app.core.sap_client import SAPClient, SAPError, SAPValidationError
 from app.models.audit import OperationAudit, OperationStatus
 from app.models.upload import BatchStatus, ErrorType, UploadBatch, UploadError
-from app.modules.shared.base_schema import APIError, ErrorSource, InvalidFileError
+from app.modules.shared.base_schema import (
+    APIError,
+    BusinessError,
+    ErrorSource,
+    InvalidFileError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -98,9 +103,14 @@ class BaseUploadHandler(ABC, Generic[SchemaT]):
     @abstractmethod
     async def sync_row(self, sap: SAPClient, row: SchemaT) -> None: ...
 
-    async def validate(self, sap: SAPClient, row: SchemaT) -> list[str]:
+    async def validate(self, sap: SAPClient, row: SchemaT) -> list[BusinessError]:
         """
         Validaciones de negocio (consultas SAP) sin ejecutar la operación.
+
+        Devuelve pares `(field, message)`: `field` apunta al campo del schema
+        responsable del error (para mostrar en la columna CAMPO de la tabla
+        de rechazo); puede ser None si no aplica. `message` es el texto
+        legible para el operador.
 
         Las acciones con un `Validator` propio sobrescriben este método para
         invocarlo. El default vacío sirve para acciones que solo dependen de
@@ -269,13 +279,18 @@ class BaseUploadHandler(ABC, Generic[SchemaT]):
                 continue
 
             if business_errors:
-                errors.append(RowError(
-                    row=row_number,
-                    field=None,
-                    source=ErrorSource.API,
-                    code="business_validation",
-                    message=" | ".join(business_errors),
-                ))
+                logger.info(
+                    "preview business_errors row=%s module=%s pairs=%s",
+                    row_number, self.sap_module, business_errors,
+                )
+                for field, message in business_errors:
+                    errors.append(RowError(
+                        row=row_number,
+                        field=field,
+                        source=ErrorSource.API,
+                        code="business_validation",
+                        message=message,
+                    ))
                 continue
 
             valid_rows += 1
@@ -323,6 +338,10 @@ class BaseUploadHandler(ABC, Generic[SchemaT]):
         try:
             return self.schema_class(**cleaned)
         except ValidationError as e:
+            logger.info(
+                "schema validation failed row=%s module=%s cleaned=%s errors=%s",
+                row_number, getattr(self, "sap_module", "?"), cleaned, e.errors(),
+            )
             for err in e.errors():
                 field = ".".join(str(loc) for loc in err["loc"]) if err["loc"] else None
                 errors.append(RowError(
