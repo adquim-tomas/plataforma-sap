@@ -16,7 +16,7 @@ const API_BASE =
   (import.meta.env.VITE_API_URL as string | undefined) ?? "http://localhost:8000"
 
 const COLS =
-  "grid-cols-[8rem_5rem_5rem_minmax(0,1fr)_minmax(0,12rem)]"
+  "grid-cols-[8rem_5rem_6rem_minmax(0,1fr)_minmax(0,12rem)]"
 
 export function ActionHelp({ help, actionTitle }: ActionHelpProps) {
   const [open, setOpen] = useState(false)
@@ -135,7 +135,7 @@ export function ActionHelp({ help, actionTitle }: ActionHelpProps) {
 
 function HeaderCell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex items-center border-r border-border px-3 py-2 last:border-r-0">
+    <div className="flex items-start border-r border-border px-3 py-2 last:border-r-0">
       <Label>{children}</Label>
     </div>
   )
@@ -154,7 +154,7 @@ function Cell({
     <div
       title={title}
       className={cn(
-        "flex items-center border-r border-border px-3 py-1.5 last:border-r-0 truncate",
+        "flex items-start border-r border-border px-3 py-1.5 last:border-r-0 wrap-break-word",
         className,
       )}
     >
