@@ -95,12 +95,46 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# ── Rate limiting ────────────────────────────────────────────────────────────
+# Límite simple por IP en ventana deslizante de 60s. Suficiente para frenar
+# abuso / fuerza bruta sin entorpecer el uso normal del operador. En memoria:
+# para un único worker alcanza; con múltiples workers conviene un store externo.
+# Se registra ANTES de CORS para que CORS quede como la capa más externa y toda
+# respuesta (incluida un 429) lleve los headers CORS.
+_RATE_WINDOW_SECONDS = 60.0
+_rate_hits: dict[str, deque[float]] = defaultdict(deque)
+
+
+@app.middleware("http")
+async def _rate_limit(request: Request, call_next):
+    limit = settings.RATE_LIMIT_PER_MINUTE
+    path = request.url.path
+    if limit > 0 and request.method != "OPTIONS" and not path.startswith("/static"):
+        client = request.client.host if request.client else "unknown"
+        now = time.monotonic()
+        hits = _rate_hits[client]
+        while hits and now - hits[0] > _RATE_WINDOW_SECONDS:
+            hits.popleft()
+        if len(hits) >= limit:
+            return _error_response(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                source=ErrorSource.API,
+                code="rate_limited",
+                message="Demasiadas solicitudes. Espera un momento e intenta de nuevo.",
+            )
+        hits.append(now)
+    return await call_next(request)
+
+
+# CORS — agregado DESPUÉS del rate limiter → es la capa más externa.
+# allow_headers=["*"]: el origen ya está acotado por allowed_origins; restringir
+# headers aporta poco y rompe el preflight de algunas requests (uploads, etc.).
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.allowed_origins_list,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type"],
+    allow_headers=["*"],
 )
 
 
@@ -212,35 +246,6 @@ async def _handle_unexpected(request: Request, exc: Exception) -> JSONResponse:
         code="internal",
         message="Error interno del servidor.",
     )
-
-
-# ── Rate limiting ────────────────────────────────────────────────────────────
-# Límite simple por IP en ventana deslizante de 60s. Suficiente para frenar
-# abuso / fuerza bruta sin entorpecer el uso normal del operador. En memoria:
-# para un único worker alcanza; con múltiples workers conviene un store externo.
-_RATE_WINDOW_SECONDS = 60.0
-_rate_hits: dict[str, deque[float]] = defaultdict(deque)
-
-
-@app.middleware("http")
-async def _rate_limit(request: Request, call_next):
-    limit = settings.RATE_LIMIT_PER_MINUTE
-    path = request.url.path
-    if limit > 0 and request.method != "OPTIONS" and not path.startswith("/static"):
-        client = request.client.host if request.client else "unknown"
-        now = time.monotonic()
-        hits = _rate_hits[client]
-        while hits and now - hits[0] > _RATE_WINDOW_SECONDS:
-            hits.popleft()
-        if len(hits) >= limit:
-            return _error_response(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                source=ErrorSource.API,
-                code="rate_limited",
-                message="Demasiadas solicitudes. Espera un momento e intenta de nuevo.",
-            )
-        hits.append(now)
-    return await call_next(request)
 
 
 # Plantillas .xlsx descargables por acción — servidas en /static/templates/{archivo}

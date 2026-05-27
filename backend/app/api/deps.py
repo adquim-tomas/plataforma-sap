@@ -1,6 +1,7 @@
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError
+from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -29,7 +30,9 @@ async def get_current_user(
     """
     try:
         payload = decode_token(credentials.credentials)
-    except JWTError:
+    except (JWTError, ValidationError):
+        # JWTError: firma inválida / token expirado
+        # ValidationError: token sin el campo `jti` (emitido antes de la migración)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token inválido o expirado.",
