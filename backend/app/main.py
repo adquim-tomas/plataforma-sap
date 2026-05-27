@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -41,15 +42,19 @@ async def lifespan(app: FastAPI):
     # No bloqueamos el arranque si SAP está caído: /api/v1/health/sap reporta el estado
     # y cada llamada concreta reintenta login si la sesión no está válida.
     try:
-        await sap_service.login(
-            settings.SAP_COMPANY_DB,
-            settings.SAP_SERVICE_USER,
-            settings.SAP_SERVICE_PASSWORD,
+        await asyncio.wait_for(
+            sap_service.login(
+                settings.SAP_COMPANY_DB,
+                settings.SAP_SERVICE_USER,
+                settings.SAP_SERVICE_PASSWORD,
+            ),
+            timeout=10.0,
         )
         logger.info("SAP service account connected")
-    except SAPError as exc:
+    except Exception as exc:  # noqa: BLE001 — el arranque nunca debe colgarse por SAP
         logger.warning(
-            "SAP service account login failed at startup (%s); app continues, will retry on demand",
+            "SAP service account login failed/timed out at startup (%s); "
+            "app continues, will retry on demand",
             exc,
         )
 

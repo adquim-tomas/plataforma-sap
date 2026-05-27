@@ -132,7 +132,11 @@ class SAPClient:
                 f"{self.BASE_URL}/Login",
                 json=self._credentials,
             )
-        except httpx.ConnectError as e:
+        except httpx.TransportError as e:
+            # Cubre ConnectError, ConnectTimeout, ReadTimeout, PoolTimeout, etc.
+            # Un SL que conecta a nivel TCP pero no responde al /Login no debe
+            # colgar el caller (lifespan, health, upload): lo traducimos a un
+            # error de dominio tipado.
             raise SAPConnectionError(f"Cannot reach SAP server: {e}") from e
 
         if response.status_code == 401:
