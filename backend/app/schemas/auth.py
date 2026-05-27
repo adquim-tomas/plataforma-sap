@@ -18,4 +18,5 @@ class TokenPayload(BaseModel):
     sub: str          # SAP username
     company_db: str
     display_name: str # nombre completo del empleado en SAP
+    jti: str          # id único del token — clave para revocación
     exp: int          # unix timestamp de expiración

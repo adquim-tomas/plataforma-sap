@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils"
 
 const ACCEPTED = ".xlsx,.xls"
 const ACCEPTED_EXT = [".xlsx", ".xls"]
+const MAX_FILE_BYTES = 10 * 1024 * 1024 // 10 MB — suficiente para cargas masivas
 
 interface UploadDropzoneProps {
   onFile: (file: File) => void
@@ -27,6 +28,11 @@ export function UploadDropzone({ onFile, disabled = false }: UploadDropzoneProps
     if (!file) return
     if (!isAllowed(file)) {
       setReject(`Archivo rechazado: ${file.name} — solo .xlsx / .xls`)
+      return
+    }
+    if (file.size > MAX_FILE_BYTES) {
+      const mb = (file.size / (1024 * 1024)).toFixed(1)
+      setReject(`Archivo demasiado grande: ${mb} MB — máximo 10 MB`)
       return
     }
     setReject(null)

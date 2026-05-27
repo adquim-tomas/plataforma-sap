@@ -153,7 +153,7 @@ Para módulos no implementados (`implemented: false`), `actions` es `undefined` 
 | Roman | Slug | Acciones implementadas | Backend |
 |-------|------|------------------------|---------|
 | I | `datos-maestros` | `activar-desactivar`, `cambio-cartera`, `cambio-subgerente`, `cambio-cond-pago`, `cambio-region-cpago`, `bloqueo-cofase` | ✅ |
-| II | `gestion-clientes` | `agregar-linea`, `actualizar-margen-tp`, `actualizar-nc`, `actualizar-esp`, `eliminar-cliente` | ✅ |
+| II | `gestion-clientes` | `actualizar-margen-tp`, `actualizar-nc`, `actualizar-esp` | ✅ |
 | III | `log-precios` | `agregar-precio`, `crear-log`, `eliminar-log` | ✅ |
 | IV | `orden-compra` | `crear-servicio` | ✅ |
 | V | `factura-proveedor` | — | ⬜ |
@@ -207,7 +207,7 @@ Para módulos no implementados (`implemented: false`), `actions` es `undefined` 
 | UploadDropzone / UploadPreview / UploadSummary / ErrorReport / UploadPanel (shared) | ✅ | en `src/components/uploads/` — reutilizables por todos los módulos |
 | Preview pre-subida (parsing cliente + chequeo de columnas obligatorias + confirmación) | ✅ | `previewExcel()` en `lib/excel.ts` (read-excel-file). `ModuleSchema` por módulo en `lib/routes.ts` define `requiredColumns` |
 | **Datos Maestros** UI | ✅ | Página con selector de acción (dropdown). 6 acciones: activar/desactivar, cambio de cartera, subgerente, cond pago, región+cpago, bloqueo COFASE |
-| **Gestión de Clientes** UI | ✅ | Página con selector de acción (dropdown). 5 acciones: agregar línea, actualizar margen+TP, actualizar NC, actualizar ESP, eliminar cliente |
+| **Gestión de Clientes** UI | ✅ | Página con selector de acción (dropdown). 3 acciones: actualizar margen+TP, actualizar NC, actualizar ESP |
 | **Log de Precios** UI | ✅ | Página con selector de acción (dropdown). 3 acciones: agregar precio, crear log, eliminar log |
 | **Orden de Compra** UI | ✅ | Página con selector de acción (dropdown). 1 acción: crear OC de servicio |
 | **Factura de Proveedores** UI | ⬜ | sin backend (bloqueado por repo de Pedro) |

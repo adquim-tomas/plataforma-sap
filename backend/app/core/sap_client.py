@@ -89,7 +89,8 @@ class SAPClient:
         self._credentials: dict[str, str] = {}
         self._lock = asyncio.Lock()  # evita race condition en relogin
         self._http = httpx.AsyncClient(
-            verify=False,   # SAP B1 on-prem suele tener cert autofirmado
+            # On-prem con cert autofirmado → SAP_VERIFY_SSL=False; cert válido → True
+            verify=settings.SAP_VERIFY_SSL,
             timeout=httpx.Timeout(30.0, connect=10.0),
         )
 

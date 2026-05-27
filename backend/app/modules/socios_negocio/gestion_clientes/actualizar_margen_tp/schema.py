@@ -11,8 +11,7 @@ from app.modules.shared.base_schema import RowBase
 #   - U_LMM_ESP    (tipo de precio / "TP Precio")
 #
 # Es **estrictamente** edición de línea existente: la operación asume que el
-# `LineId` ya existe en `NX_DETCLIENTECollection`. Para crear líneas nuevas
-# usar la acción `agregar_linea`.
+# `LineId` ya existe en `NX_DETCLIENTECollection`.
 
 
 class ActualizarMargenTPRow(RowBase):

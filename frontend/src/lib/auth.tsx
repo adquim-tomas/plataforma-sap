@@ -20,6 +20,10 @@ interface PersistedAuth {
   payload: TokenPayload
 }
 
+// Cuánto antes del vencimiento intentamos renovar el token. La renovación usa
+// el token todavía vigente, así que debe ocurrir ANTES de que expire.
+const REFRESH_MARGIN_MS = 60_000
+
 function loadPersisted(): PersistedAuth | null {
   const token = localStorage.getItem(TOKEN_KEY)
   if (!token) return null
@@ -34,36 +38,56 @@ function loadPersisted(): PersistedAuth | null {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<PersistedAuth | null>(loadPersisted)
 
-  // Auto-logout cuando expira la sesión activa.
-  useEffect(() => {
-    if (!state) return
-    const msToExpiry = state.payload.exp * 1000 - Date.now()
-    if (msToExpiry <= 0) {
-      setState(null)
-      localStorage.removeItem(TOKEN_KEY)
-      return
-    }
-    const timer = window.setTimeout(() => {
-      setState(null)
-      localStorage.removeItem(TOKEN_KEY)
-    }, msToExpiry)
-    return () => window.clearTimeout(timer)
-  }, [state])
-
-  const login = useCallback(async (creds: LoginRequest) => {
-    const { data } = await api.post<TokenResponse>("/api/v1/auth/login", creds)
-    const payload = decodeJwt(data.access_token)
-    if (!payload) {
-      throw new Error("Token inválido recibido del servidor.")
-    }
-    localStorage.setItem(TOKEN_KEY, data.access_token)
-    setState({ token: data.access_token, payload })
-  }, [])
-
-  const logout = useCallback(() => {
+  const clearSession = useCallback(() => {
     localStorage.removeItem(TOKEN_KEY)
     setState(null)
   }, [])
+
+  const applyToken = useCallback((token: string): boolean => {
+    const payload = decodeJwt(token)
+    if (!payload) return false
+    localStorage.setItem(TOKEN_KEY, token)
+    setState({ token, payload })
+    return true
+  }, [])
+
+  // Renovación automática: programa un refresh poco antes del vencimiento para
+  // mantener la sesión viva sin re-login. Si el refresh falla, cierra sesión.
+  useEffect(() => {
+    if (!state) return
+
+    // Si el token ya venció (msToExpiry <= 0), el timer dispara de inmediato y
+    // el refresh falla → clearSession en el callback async. loadPersisted ya
+    // descarta tokens vencidos al montar, así que es un caso defensivo.
+    const msToExpiry = state.payload.exp * 1000 - Date.now()
+    const msToRefresh = Math.max(msToExpiry - REFRESH_MARGIN_MS, 0)
+    const timer = window.setTimeout(async () => {
+      try {
+        const { data } = await api.post<TokenResponse>("/api/v1/auth/refresh")
+        if (!applyToken(data.access_token)) clearSession()
+      } catch {
+        clearSession()
+      }
+    }, msToRefresh)
+
+    return () => window.clearTimeout(timer)
+  }, [state, applyToken, clearSession])
+
+  const login = useCallback(
+    async (creds: LoginRequest) => {
+      const { data } = await api.post<TokenResponse>("/api/v1/auth/login", creds)
+      if (!applyToken(data.access_token)) {
+        throw new Error("Token inválido recibido del servidor.")
+      }
+    },
+    [applyToken],
+  )
+
+  const logout = useCallback(() => {
+    // Revocar el token en el backend (best-effort) antes de limpiar local.
+    void api.post("/api/v1/auth/logout").catch(() => {})
+    clearSession()
+  }, [clearSession])
 
   const value = useMemo<AuthContextValue>(
     () => ({

@@ -1,6 +1,6 @@
 from app.core.sap_client import SAPClient
 from app.modules.shared.base_router import BaseUploadHandler
-from app.modules.shared.base_schema import BusinessError, RowValidationError
+from app.modules.shared.base_schema import BusinessError
 from app.modules.socios_negocio.datos_maestros.cambio_cartera.sap_service import (
     CambioCarteraSAPService,
 )
@@ -25,16 +25,7 @@ class CambioCarteraHandler(BaseUploadHandler[CambioCarteraRow]):
     async def validate(self, sap: SAPClient, row: CambioCarteraRow) -> list[BusinessError]:
         return await CambioCarteraValidator.validate(sap, row)
 
-    async def sync_row(self, sap: SAPClient, row: CambioCarteraRow) -> None:
-        business_errors = await self.validate(sap, row)
-        if business_errors:
-            field, message = business_errors[0]
-            raise RowValidationError(
-                message,
-                code="business_validation",
-                field=field,
-            )
-
+    async def apply_sap(self, sap: SAPClient, row: CambioCarteraRow) -> None:
         await CambioCarteraSAPService.update(sap, row)
 
     # ── Auditoría antes/después ───────────────────────────────────────────────

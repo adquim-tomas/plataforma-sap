@@ -1,6 +1,6 @@
 from app.core.sap_client import SAPClient
 from app.modules.shared.base_router import BaseUploadHandler
-from app.modules.shared.base_schema import BusinessError, RowValidationError
+from app.modules.shared.base_schema import BusinessError
 from app.modules.socios_negocio.log_precios.crear_log.sap_service import (
     CrearLogSAPService,
 )
@@ -23,14 +23,5 @@ class CrearLogHandler(BaseUploadHandler[CrearLogRow]):
     async def validate(self, sap: SAPClient, row: CrearLogRow) -> list[BusinessError]:
         return await CrearLogValidator.validate(sap, row)
 
-    async def sync_row(self, sap: SAPClient, row: CrearLogRow) -> None:
-        business_errors = await self.validate(sap, row)
-        if business_errors:
-            field, message = business_errors[0]
-            raise RowValidationError(
-                message,
-                code="business_validation",
-                field=field,
-            )
-
+    async def apply_sap(self, sap: SAPClient, row: CrearLogRow) -> None:
         await CrearLogSAPService.create(sap, row)

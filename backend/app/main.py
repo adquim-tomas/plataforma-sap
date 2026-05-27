@@ -1,5 +1,7 @@
 import asyncio
 import logging
+import time
+from collections import defaultdict, deque
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -28,6 +30,21 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+def _prune_revoked_tokens() -> None:
+    """Borra de la denylist los tokens cuya expiración ya pasó."""
+    from datetime import datetime, timezone
+
+    from sqlalchemy import delete
+
+    from app.core.database import SessionLocal
+    from app.models.auth import RevokedToken
+
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    with SessionLocal() as db:
+        db.execute(delete(RevokedToken).where(RevokedToken.expires_at < now))
+        db.commit()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Correr migraciones pendientes automáticamente al iniciar
@@ -36,6 +53,10 @@ async def lifespan(app: FastAPI):
     alembic_cfg.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
     command.upgrade(alembic_cfg, "head")
     logger.info("Database migrations applied")
+
+    # Purga de tokens revocados ya vencidos: un jti expirado no necesita
+    # seguir en la denylist (el propio JWT ya no valida por expiración).
+    _prune_revoked_tokens()
 
 
     # Startup: conectar service account a SAP.
@@ -78,8 +99,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.allowed_origins_list,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 
@@ -119,7 +140,7 @@ async def _handle_sap_not_found(request: Request, exc: SAPNotFoundError) -> JSON
 
 @app.exception_handler(SAPAuthError)
 async def _handle_sap_auth(request: Request, exc: SAPAuthError) -> JSONResponse:
-    logger.error(f"SAP auth error: {exc}")
+    logger.error("SAP auth error: %s", exc)
     return _error_response(
         status_code=exc.status_code or status.HTTP_502_BAD_GATEWAY,
         source=ErrorSource.SAP,
@@ -130,7 +151,7 @@ async def _handle_sap_auth(request: Request, exc: SAPAuthError) -> JSONResponse:
 
 @app.exception_handler(SAPConnectionError)
 async def _handle_sap_connection(request: Request, exc: SAPConnectionError) -> JSONResponse:
-    logger.error(f"SAP connection error: {exc}")
+    logger.error("SAP connection error: %s", exc)
     return _error_response(
         status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
         source=ErrorSource.SAP,
@@ -141,7 +162,7 @@ async def _handle_sap_connection(request: Request, exc: SAPConnectionError) -> J
 
 @app.exception_handler(SAPError)
 async def _handle_sap_generic(request: Request, exc: SAPError) -> JSONResponse:
-    logger.exception(f"Unexpected SAP error: {exc}")
+    logger.exception("Unexpected SAP error: %s", exc)
     return _error_response(
         status_code=status.HTTP_502_BAD_GATEWAY,
         source=ErrorSource.SAP,
@@ -184,13 +205,42 @@ async def _handle_http_exception(request: Request, exc: HTTPException) -> JSONRe
 
 @app.exception_handler(Exception)
 async def _handle_unexpected(request: Request, exc: Exception) -> JSONResponse:
-    logger.exception(f"Unhandled error: {exc}")
+    logger.exception("Unhandled error: %s", exc)
     return _error_response(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         source=ErrorSource.API,
         code="internal",
         message="Error interno del servidor.",
     )
+
+
+# ── Rate limiting ────────────────────────────────────────────────────────────
+# Límite simple por IP en ventana deslizante de 60s. Suficiente para frenar
+# abuso / fuerza bruta sin entorpecer el uso normal del operador. En memoria:
+# para un único worker alcanza; con múltiples workers conviene un store externo.
+_RATE_WINDOW_SECONDS = 60.0
+_rate_hits: dict[str, deque[float]] = defaultdict(deque)
+
+
+@app.middleware("http")
+async def _rate_limit(request: Request, call_next):
+    limit = settings.RATE_LIMIT_PER_MINUTE
+    path = request.url.path
+    if limit > 0 and request.method != "OPTIONS" and not path.startswith("/static"):
+        client = request.client.host if request.client else "unknown"
+        now = time.monotonic()
+        hits = _rate_hits[client]
+        while hits and now - hits[0] > _RATE_WINDOW_SECONDS:
+            hits.popleft()
+        if len(hits) >= limit:
+            return _error_response(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                source=ErrorSource.API,
+                code="rate_limited",
+                message="Demasiadas solicitudes. Espera un momento e intenta de nuevo.",
+            )
+        hits.append(now)
+    return await call_next(request)
 
 
 # Plantillas .xlsx descargables por acción — servidas en /static/templates/{archivo}

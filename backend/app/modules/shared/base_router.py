@@ -17,6 +17,7 @@ from app.modules.shared.base_schema import (
     BusinessError,
     ErrorSource,
     InvalidFileError,
+    RowValidationError,
 )
 
 logger = logging.getLogger(__name__)
@@ -89,7 +90,11 @@ class BaseUploadHandler(ABC, Generic[SchemaT]):
     Cada módulo solo necesita implementar:
       - schema_class   → clase Pydantic que representa una fila del Excel
       - sap_module     → nombre del módulo para auditoría
-      - sync_row()     → sincroniza una fila válida con SAP (PATCH/POST según el módulo)
+      - apply_sap()    → ejecuta la operación SAP de la fila (PATCH/POST/DELETE)
+
+    Opcionalmente sobrescribe `validate()` para chequeos de negocio contra SAP.
+    El flujo estándar `validate → apply_sap` vive en `sync_row()`; las acciones
+    con un flujo distinto pueden sobrescribir `sync_row()` directamente.
     """
 
     @property
@@ -101,7 +106,22 @@ class BaseUploadHandler(ABC, Generic[SchemaT]):
     def sap_module(self) -> str: ...
 
     @abstractmethod
-    async def sync_row(self, sap: SAPClient, row: SchemaT) -> None: ...
+    async def apply_sap(self, sap: SAPClient, row: SchemaT) -> None:
+        """Ejecuta la operación SAP de la acción sobre una fila ya validada."""
+        ...
+
+    async def sync_row(self, sap: SAPClient, row: SchemaT) -> None:
+        """
+        Sincroniza una fila válida con SAP: corre las validaciones de negocio
+        (`validate`) y, si pasan, aplica la operación (`apply_sap`). El primer
+        error de negocio se traduce en `RowValidationError`. Las acciones con
+        un flujo propio pueden sobrescribir este método.
+        """
+        business_errors = await self.validate(sap, row)
+        if business_errors:
+            field, message = business_errors[0]
+            raise RowValidationError(message, code="business_validation", field=field)
+        await self.apply_sap(sap, row)
 
     async def validate(self, sap: SAPClient, row: SchemaT) -> list[BusinessError]:
         """

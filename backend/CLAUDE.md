@@ -116,11 +116,9 @@ Cada fila es un endpoint concreto. Solo se crean acciones que tienen respaldo co
 | Datos Maestros (BusinessPartners) | Cambio de condición de pago | `socios_negocio/datos_maestros/cambio_cond_pago` | PATCH `BPAddresses[{RowNum}].U_LMM_CondPago` + `U_LMM_DescPago` | `classsocio.py::SN.updateCodPago` + `update_many_cod_pago` |
 | Datos Maestros (BusinessPartners) | Cambio de región y cpago | `socios_negocio/datos_maestros/cambio_region_cpago` | PATCH `BPAddresses[{RowNum}].State` + `U_LMM_CondPago` + `U_LMM_DescPago` | `classsocio.py::SN.update_zonal_region_cpago` + `update_many_region` |
 | Datos Maestros (BusinessPartners) | Bloqueo COFASE | `socios_negocio/datos_maestros/bloqueo_cofase` | PATCH masivo con `Valid=tNO`+`Frozen=tYES`+`U_tipo_linea`+`CreditLimit=0`+`MaxCommitment=0`+`FreeText` apendado | `classsocio.py::SN.bloqueo_masivo_COFASE` + `update_many_bloqueo_cofase` |
-| Gestión de Clientes (NX_GCLIENTE) | Agregar línea | `socios_negocio/gestion_clientes/agregar_linea` | PATCH `NX_GCLIENTE('{Code}')` con upsert por `LineId` en `NX_DETCLIENTECollection` | `classGC.py::GC.newlineGC` + `update_many_gc` |
 | Gestión de Clientes (NX_GCLIENTE) | Actualizar margen + TP precio | `socios_negocio/gestion_clientes/actualizar_margen_tp` | PATCH línea con `U_NX_Margen` + `U_LMM_ESP` | `classmargen.py::MargenChange.updateMargenadquimTPprecio_margen` |
 | Gestión de Clientes (NX_GCLIENTE) | Actualizar NC | `socios_negocio/gestion_clientes/actualizar_nc` | PATCH línea con `U_LMM_NC` | `classmargen.py::MargenChange.updateNc` + `updateManyNc` |
 | Gestión de Clientes (NX_GCLIENTE) | Actualizar precio especial | `socios_negocio/gestion_clientes/actualizar_esp` | PATCH línea con `U_LMM_ESP` | `classmargen.py::MargenChange.updateEsp` + `updateManyEsp` |
-| Gestión de Clientes (NX_GCLIENTE) | Eliminar cliente | `socios_negocio/gestion_clientes/eliminar_cliente` | DELETE `NX_GCLIENTE('{Code}')` (header + todas sus líneas) | `classGC.py::GC.deleteGC` + `multi_deleteGC` |
 | Log de Precios (NX_LOGPRECIOS) | Agregar precio | `socios_negocio/log_precios/agregar_precio` | PATCH `NX_LOGPRECIOS('{Code}')` appendeando línea a `NX_LOGDETALLECollection` | `classlogprecio.py::logPrecio.addLine` + `addManyLog` |
 | Log de Precios (NX_LOGPRECIOS) | Crear log | `socios_negocio/log_precios/crear_log` | POST `NX_LOGPRECIOS` (header + 1ra línea) | `classlogprecio.py::logPrecio.newLog` + `multi_newLog` (variante adquim) |
 | Log de Precios (NX_LOGPRECIOS) | Eliminar log | `socios_negocio/log_precios/eliminar_log` | DELETE `NX_LOGPRECIOS('{Code}')` (header + todas sus líneas) | `classlogprecio.py::logPrecio.deleteLog` + `deleteManyLog` |
@@ -177,23 +175,13 @@ Las acciones que modifican una dirección puntual de `BPAddresses` (`cambio_cart
 - El servicio hace `GET BusinessPartners('{CardCode}')?$select=FreeText`, appendea `"\\r{DD-MM-YYYY} COBERTURA RETIRADA"` (fecha actual del servidor) al texto existente y lo incluye en el PATCH. El comentario previo se preserva.
 - Validador SAP: `card_code_exists`.
 
-#### Gestión de Clientes — Agregar línea
-
-- Identificadores (obligatorios): `Code` (Code del header NX_GCLIENTE — formato `{CardCode}-{N}` con `-N` = correlativo de sucursal; p. ej. `CN12345678-9-3`. **No** es el CardCode pelado) + `LineId` (id de la línea en `NX_DETCLIENTECollection`).
-- Campos opcionales — al menos uno debe tener valor: `U_NX_Margen` (decimal — 0.25 = 25%), `U_NX_Capacidad`, `U_NX_CodArt`, `U_LMM_ESP`, `U_LMM_DescArt`, `U_LMM_Sucural` (**typo intencional, sin 's' final**), `U_LMM_Precio_Estimado`, `U_LMM_FI_SPOT`, `U_LMM_NC` (adquim), `U_LMM_Precio_Estimado_Neto` (adclean), `U_LMM_Formato` (adclean).
-- Schema con `extra="forbid"`; los floats vienen tipados desde Pydantic v2 (coerción automática de string a float).
-- PATCH a `NX_GCLIENTE('{Code}')` con una sola entrada en `NX_DETCLIENTECollection`. SAP B1 hace upsert por LineId — si la línea existe se actualiza, si no se crea. Las demás líneas del cliente no se tocan.
-- Validador SAP: `nx_gcliente_exists` (header existe). No se valida existencia del LineId (la upsert decide).
-- Pedro tiene dos variantes (`adquim` vs `adclean`) que difieren en cuáles UDFs aplican; acá se unifica: el operador completa solo los campos relevantes a su DB.
-
 #### Patrón compartido de las acciones que editan una línea existente de NX_GCLIENTE
 
 Las acciones `actualizar_margen_tp`, `actualizar_nc` y `actualizar_esp` siguen el mismo patrón:
 
 1. Schema con `extra="forbid"`: `Code` + `LineId` obligatorios + los campos específicos de la acción.
-2. Validator chequea `nx_gcliente_exists(Code)` y `nx_gcliente_line_exists(Code, LineId)`. A diferencia de `agregar_linea`, acá la existencia de la línea es obligatoria — Pedro tiene funciones distintas para crear vs editar y respetamos esa frontera.
+2. Validator chequea `nx_gcliente_exists(Code)` y `nx_gcliente_line_exists(Code, LineId)`: la existencia de la línea es obligatoria (estas acciones solo editan líneas que ya existen; no crean líneas nuevas).
 3. Service hace PATCH a `NX_GCLIENTE('{Code}')` con una única entrada en `NX_DETCLIENTECollection` (`Code` + `LineId` + los campos a actualizar). Las demás líneas del cliente quedan intactas (upsert por LineId).
-4. Para crear líneas nuevas, redirigir al operador a `agregar_linea`.
 
 #### Gestión de Clientes — Actualizar margen + TP precio
 
@@ -331,13 +319,6 @@ Difieren solo en el verbo y el cuerpo SAP:
   (incluye `BPL_IDAssignedToInvoice`). La variante adclean omite ese campo
   y queda fuera de scope hasta identificarla como acción separada.
 
-#### Gestión de Clientes — Eliminar cliente
-
-- Único campo aceptado: `Code`. Schema con `extra="forbid"`.
-- `DELETE NX_GCLIENTE('{Code}')` — borra el header entero, lo que implícitamente borra todas las líneas del `NX_DETCLIENTECollection`. **No** hay acción para borrar una línea puntual: Pedro `GC.deleteGC` solo opera a nivel header.
-- Validador SAP: `nx_gcliente_exists`.
-- Pedro: `GC.deleteGC` + `multi_deleteGC`.
-
 ### Documentos SAP estándar — POST vs PATCH
 
 Los módulos UDO (Datos Maestros, Gestión de Clientes, Log de Precios) usan **PATCH** sobre registros existentes. Los documentos estándar de SAP (PurchaseOrders, Invoices, etc.) usan **POST** para crear documentos nuevos. El `BaseUploadHandler` no diferencia: el handler decide en `sync_row()` si llamar `sap.post(...)` o `sap.patch(...)`. Errores SAP (`SAPValidationError`, `SAPError`) se reportan por fila en `RowError` con `source=sap` independientemente del método.
@@ -360,11 +341,9 @@ Los módulos UDO (Datos Maestros, Gestión de Clientes, Log de Precios) usan **P
 | **Datos Maestros — Cambio de condición de pago** | ✅ | PATCH `BPAddresses[RowNum].U_LMM_CondPago` + `U_LMM_DescPago` (Pedro-grounded en `updateCodPago`) |
 | **Datos Maestros — Cambio de región y cpago** | ✅ | PATCH `BPAddresses[RowNum].State` + `U_LMM_CondPago` + `U_LMM_DescPago` (Pedro-grounded en `update_zonal_region_cpago`) |
 | **Datos Maestros — Bloqueo COFASE** | ✅ | PATCH masivo con valores fijos + apend de fecha en `FreeText` (Pedro-grounded en `bloqueo_masivo_COFASE`) |
-| **Gestión de Clientes — Agregar línea** | ✅ | PATCH `NX_GCLIENTE` upsert por LineId en `NX_DETCLIENTECollection` (Pedro-grounded en `GC.newlineGC`) |
 | **Gestión de Clientes — Actualizar margen + TP precio** | ✅ | PATCH línea con `U_NX_Margen` + `U_LMM_ESP` (Pedro-grounded en `MargenChange.updateMargenadquimTPprecio_margen`) |
 | **Gestión de Clientes — Actualizar NC** | ✅ | PATCH línea con `U_LMM_NC` (Pedro-grounded en `MargenChange.updateNc`) |
 | **Gestión de Clientes — Actualizar precio especial** | ✅ | PATCH línea con `U_LMM_ESP` (Pedro-grounded en `MargenChange.updateEsp`) |
-| **Gestión de Clientes — Eliminar cliente** | ✅ | DELETE header NX_GCLIENTE (Pedro-grounded en `GC.deleteGC`) |
 | **Log de Precios — Agregar precio** | ✅ | PATCH `NX_LOGPRECIOS` append línea con IVA/LineTotal computados (Pedro-grounded en `logPrecio.addLine`) |
 | **Log de Precios — Crear log** | ✅ | POST `NX_LOGPRECIOS` (header + 1ra línea, variante adquim) (Pedro-grounded en `logPrecio.newLog`) |
 | **Log de Precios — Eliminar log** | ✅ | DELETE header NX_LOGPRECIOS (Pedro-grounded en `logPrecio.deleteLog`) |

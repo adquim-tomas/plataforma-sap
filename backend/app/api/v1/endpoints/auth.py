@@ -1,10 +1,15 @@
 import logging
+from datetime import datetime, timezone
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Depends, status
+from sqlalchemy.orm import Session
 
+from app.api.deps import get_current_user
+from app.core.database import get_db
 from app.core.sap_client import SAPAuthError, SAPClient
 from app.core.security import create_access_token
-from app.schemas.auth import LoginRequest, TokenResponse
+from app.models.auth import RevokedToken
+from app.schemas.auth import LoginRequest, TokenPayload, TokenResponse
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 logger = logging.getLogger(__name__)
@@ -38,19 +43,48 @@ async def login(body: LoginRequest) -> TokenResponse:
         display_name=display_name,
     )
 
-    logger.info(f"Login exitoso: {body.username} @ {body.company_db}")
+    logger.info("Login exitoso @ %s", body.company_db)
 
     return TokenResponse(access_token=token, expires_in=expires_in)
 
 
-# TODO
+@router.post("/refresh", response_model=TokenResponse)
+async def refresh(
+    user: TokenPayload = Depends(get_current_user),
+) -> TokenResponse:
+    """
+    Renueva el JWT antes de que expire. El frontend lo llama poco antes del
+    vencimiento para mantener la sesión viva sin pedir credenciales de nuevo.
+
+    Solo funciona con un token todavía válido y no revocado (lo garantiza
+    `get_current_user`). Emite un token nuevo con `jti` y expiración frescos;
+    el token anterior expira solo a su debido tiempo.
+    """
+    token, expires_in = create_access_token(
+        username=user.sub,
+        company_db=user.company_db,
+        display_name=user.display_name,
+    )
+    return TokenResponse(access_token=token, expires_in=expires_in)
+
+
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
-async def logout() -> None:
+async def logout(
+    user: TokenPayload = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> None:
     """
-    El JWT es stateless — el cliente simplemente descarta el token.
-    Este endpoint existe para que el frontend tenga un contrato claro.
+    Revoca el token actual agregando su `jti` a la denylist. A partir de acá
+    el token deja de ser aceptado por `get_current_user`, aunque no haya
+    expirado todavía.
     """
-    pass
+    if db.get(RevokedToken, user.jti) is None:
+        expires_at = datetime.fromtimestamp(user.exp, tz=timezone.utc).replace(
+            tzinfo=None
+        )
+        db.add(RevokedToken(jti=user.jti, expires_at=expires_at))
+        db.commit()
+    logger.info("Logout @ %s", user.company_db)
 
 
 # ── Helper privado ─────────────────────────────────────────────────────────────

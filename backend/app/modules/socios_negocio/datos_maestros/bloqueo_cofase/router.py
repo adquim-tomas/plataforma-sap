@@ -1,6 +1,6 @@
 from app.core.sap_client import SAPClient
 from app.modules.shared.base_router import BaseUploadHandler
-from app.modules.shared.base_schema import BusinessError, RowValidationError
+from app.modules.shared.base_schema import BusinessError
 from app.modules.socios_negocio.datos_maestros.bloqueo_cofase.sap_service import (
     BloqueoCofaseSAPService,
 )
@@ -25,16 +25,7 @@ class BloqueoCofaseHandler(BaseUploadHandler[BloqueoCofaseRow]):
     async def validate(self, sap: SAPClient, row: BloqueoCofaseRow) -> list[BusinessError]:
         return await BloqueoCofaseValidator.validate(sap, row)
 
-    async def sync_row(self, sap: SAPClient, row: BloqueoCofaseRow) -> None:
-        business_errors = await self.validate(sap, row)
-        if business_errors:
-            field, message = business_errors[0]
-            raise RowValidationError(
-                message,
-                code="business_validation",
-                field=field,
-            )
-
+    async def apply_sap(self, sap: SAPClient, row: BloqueoCofaseRow) -> None:
         await BloqueoCofaseSAPService.update(sap, row)
 
     # ── Auditoría antes/después ───────────────────────────────────────────────

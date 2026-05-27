@@ -1,6 +1,6 @@
 from app.core.sap_client import SAPClient
 from app.modules.shared.base_router import BaseUploadHandler
-from app.modules.shared.base_schema import BusinessError, RowValidationError
+from app.modules.shared.base_schema import BusinessError
 from app.modules.socios_negocio.gestion_clientes.actualizar_esp.sap_service import (
     ActualizarEspSAPService,
 )
@@ -25,14 +25,5 @@ class ActualizarEspHandler(BaseUploadHandler[ActualizarEspRow]):
     async def validate(self, sap: SAPClient, row: ActualizarEspRow) -> list[BusinessError]:
         return await ActualizarEspValidator.validate(sap, row)
 
-    async def sync_row(self, sap: SAPClient, row: ActualizarEspRow) -> None:
-        business_errors = await self.validate(sap, row)
-        if business_errors:
-            field, message = business_errors[0]
-            raise RowValidationError(
-                message,
-                code="business_validation",
-                field=field,
-            )
-
+    async def apply_sap(self, sap: SAPClient, row: ActualizarEspRow) -> None:
         await ActualizarEspSAPService.update(sap, row)

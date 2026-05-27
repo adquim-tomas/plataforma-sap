@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime, timedelta, timezone
 
 from jose import jwt
@@ -13,6 +14,7 @@ def create_access_token(
 ) -> tuple[str, int]:
     """
     Genera un JWT firmado con los datos del usuario SAP.
+    Incluye un `jti` único para poder revocar el token (ver `revoked_token`).
     Devuelve (token, expires_in_seconds).
     """
     expire = datetime.now(timezone.utc) + timedelta(
@@ -22,6 +24,7 @@ def create_access_token(
         "sub": username,
         "company_db": company_db,
         "display_name": display_name,
+        "jti": uuid.uuid4().hex,
         "exp": expire,
     }
     token = jwt.encode(

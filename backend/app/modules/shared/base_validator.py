@@ -70,7 +70,7 @@ class SAPValidator:
                 select=["SalesEmployeeCode"],
             )
             return len(results) > 0
-        except Exception:
+        except SAPNotFoundError:
             return False
 
     @staticmethod
@@ -107,7 +107,7 @@ class SAPValidator:
                 select=["SalesEmployeeCode"],
             )
             return len(results) > 0
-        except Exception:
+        except SAPNotFoundError:
             return False
 
     @staticmethod

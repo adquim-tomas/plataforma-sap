@@ -19,6 +19,7 @@ export interface TokenPayload {
   sub: string
   company_db: string
   display_name: string
+  jti: string
   exp: number
 }
 

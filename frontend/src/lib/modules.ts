@@ -558,133 +558,6 @@ const ACTUALIZAR_ESP_HELP: ActionHelp = {
   templateFilename: "actualizar_esp_template.xlsx",
 }
 
-const ELIMINAR_CLIENTE_HELP: ActionHelp = {
-  description:
-    "Elimina por completo el cliente NX_GCLIENTE indicado — borra el header y, con él, todas sus líneas de precios/margen/NC/ESP. Operación irreversible.",
-  columns: [
-    {
-      name: "Code",
-      type: "str",
-      required: true,
-      description: "Code del header NX_GCLIENTE a eliminar. NO es el CardCode pelado: es el CardCode más un guion y un correlativo de sucursal (p. ej. CN12345678-9-3).",
-      example: "CN12345678-9-3",
-    },
-  ],
-  businessRules: [
-    "Borra el cliente entero de NX_GCLIENTE, no una línea puntual. Todas las líneas (margen, NC, ESP, precios, etc.) del cliente desaparecen.",
-    "Operación irreversible — verificar el listado antes de subir.",
-    "El Code debe existir; si no existe, la fila se reporta como error.",
-    "Para borrar una línea puntual sin tocar el cliente entero no hay acción disponible (no la cubre la base de referencia).",
-  ],
-  templateFilename: "eliminar_cliente_template.xlsx",
-}
-
-const AGREGAR_LINEA_HELP: ActionHelp = {
-  description:
-    "Agrega una línea nueva al cliente en NX_GCLIENTE, o actualiza una existente con el mismo LineId. SAP B1 hace upsert por LineId — las demás líneas del cliente no se tocan.",
-  columns: [
-    {
-      name: "Code",
-      type: "str",
-      required: true,
-      description: "Code del header NX_GCLIENTE. NO es el CardCode pelado: es el CardCode más un guion y un correlativo de sucursal (p. ej. CN12345678-9-3).",
-      example: "CN12345678-9-3",
-    },
-    {
-      name: "LineId",
-      type: "int",
-      required: true,
-      description: "Identificador numérico de la línea dentro de NX_DETCLIENTECollection. Si existe se actualiza, si no se crea.",
-      example: "0",
-    },
-    {
-      name: "U_NX_Margen",
-      type: "float",
-      required: false,
-      description: "Margen comercial en formato decimal. Ejemplo: 25% se escribe 0.25.",
-      example: "0.25",
-    },
-    {
-      name: "U_NX_Capacidad",
-      type: "str",
-      required: false,
-      description: "Capacidad asociada a la línea.",
-      example: "20m3",
-    },
-    {
-      name: "U_NX_CodArt",
-      type: "str",
-      required: false,
-      description: "Código de artículo SAP relacionado.",
-      example: "GAS-95",
-    },
-    {
-      name: "U_LMM_ESP",
-      type: "str",
-      required: false,
-      description: "Tipo de precio (ESP).",
-      example: "Estandar",
-    },
-    {
-      name: "U_LMM_DescArt",
-      type: "str",
-      required: false,
-      description: "Descripción del artículo.",
-      example: "Gasolina 95",
-    },
-    {
-      name: "U_LMM_Sucural",
-      type: "str",
-      required: false,
-      description: "Sucursal (typo intencional en SAP — escribir tal cual, sin la 's' final).",
-      example: "Casa Matriz",
-    },
-    {
-      name: "U_LMM_Precio_Estimado",
-      type: "float",
-      required: false,
-      description: "Precio estimado.",
-      example: "850.50",
-    },
-    {
-      name: "U_LMM_FI_SPOT",
-      type: "float",
-      required: false,
-      description: "Flete spot.",
-      example: "100.0",
-    },
-    {
-      name: "U_LMM_NC",
-      type: "float",
-      required: false,
-      description: "Nota de crédito. Solo aplica a clientes de tipo adquim.",
-      example: "5.0",
-    },
-    {
-      name: "U_LMM_Precio_Estimado_Neto",
-      type: "float",
-      required: false,
-      description: "Precio estimado neto. Solo aplica a clientes de tipo adclean.",
-      example: "720.00",
-    },
-    {
-      name: "U_LMM_Formato",
-      type: "str",
-      required: false,
-      description: "Formato del producto. Solo aplica a clientes de tipo adclean.",
-      example: "Bidón 20L",
-    },
-  ],
-  businessRules: [
-    "El Code debe corresponder a un NX_GCLIENTE existente — esta acción no crea clientes nuevos.",
-    "Al menos un campo opcional debe tener valor (si no, la fila no representa cambio).",
-    "Si el LineId ya existe, los campos provistos pisan los anteriores. Los campos que no completes quedan como están.",
-    "U_LMM_Sucural es typo intencional de SAP (sin 's' final) — escribir tal cual.",
-    "Los campos NC (adquim) vs Precio_Estimado_Neto + Formato (adclean) son excluyentes según el tipo de cliente — usar los que correspondan a tu DB.",
-  ],
-  templateFilename: "agregar_linea_template.xlsx",
-}
-
 const CAMBIO_SUBGERENTE_HELP: ActionHelp = {
   description:
     "Reasigna el subgerente responsable de una sucursal del cliente. Cambia el campo U_LMM_ZN_SG de la dirección indicada en BPAddresses.",
@@ -994,13 +867,6 @@ export const MODULES: ModuleEntry[] = [
     category: "socios_negocio",
     actions: [
       {
-        id: "agregar-linea",
-        title: "Agregar línea",
-        apiPath: "socios_negocio/gestion_clientes/agregar_linea",
-        help: AGREGAR_LINEA_HELP,
-        schema: schemaFromHelp(AGREGAR_LINEA_HELP),
-      },
-      {
         id: "actualizar-margen-tp",
         title: "Actualizar margen + TP precio",
         apiPath: "socios_negocio/gestion_clientes/actualizar_margen_tp",
@@ -1020,13 +886,6 @@ export const MODULES: ModuleEntry[] = [
         apiPath: "socios_negocio/gestion_clientes/actualizar_esp",
         help: ACTUALIZAR_ESP_HELP,
         schema: schemaFromHelp(ACTUALIZAR_ESP_HELP),
-      },
-      {
-        id: "eliminar-cliente",
-        title: "Eliminar cliente",
-        apiPath: "socios_negocio/gestion_clientes/eliminar_cliente",
-        help: ELIMINAR_CLIENTE_HELP,
-        schema: schemaFromHelp(ELIMINAR_CLIENTE_HELP),
       },
     ],
   },

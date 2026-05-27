@@ -1,6 +1,6 @@
 from app.core.sap_client import SAPClient
 from app.modules.shared.base_router import BaseUploadHandler
-from app.modules.shared.base_schema import BusinessError, RowValidationError
+from app.modules.shared.base_schema import BusinessError
 from app.modules.socios_negocio.log_precios.eliminar_log.sap_service import (
     EliminarLogSAPService,
 )
@@ -25,14 +25,5 @@ class EliminarLogHandler(BaseUploadHandler[EliminarLogRow]):
     async def validate(self, sap: SAPClient, row: EliminarLogRow) -> list[BusinessError]:
         return await EliminarLogValidator.validate(sap, row)
 
-    async def sync_row(self, sap: SAPClient, row: EliminarLogRow) -> None:
-        business_errors = await self.validate(sap, row)
-        if business_errors:
-            field, message = business_errors[0]
-            raise RowValidationError(
-                message,
-                code="business_validation",
-                field=field,
-            )
-
+    async def apply_sap(self, sap: SAPClient, row: EliminarLogRow) -> None:
         await EliminarLogSAPService.delete(sap, row)

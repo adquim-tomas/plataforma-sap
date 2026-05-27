@@ -29,9 +29,6 @@ from app.modules.socios_negocio.datos_maestros.cambio_region_cpago.router import
 from app.modules.socios_negocio.datos_maestros.cambio_subgerente.router import (
     CambioSubgerenteHandler,
 )
-from app.modules.socios_negocio.gestion_clientes.agregar_linea.router import (
-    AgregarLineaHandler,
-)
 from app.modules.socios_negocio.gestion_clientes.actualizar_margen_tp.router import (
     ActualizarMargenTPHandler,
 )
@@ -40,9 +37,6 @@ from app.modules.socios_negocio.gestion_clientes.actualizar_nc.router import (
 )
 from app.modules.socios_negocio.gestion_clientes.actualizar_esp.router import (
     ActualizarEspHandler,
-)
-from app.modules.socios_negocio.gestion_clientes.eliminar_cliente.router import (
-    EliminarClienteHandler,
 )
 from app.modules.socios_negocio.log_precios.agregar_precio.router import (
     AgregarPrecioHandler,
@@ -83,11 +77,9 @@ HANDLERS = {
     "socios_negocio/datos_maestros/cambio_cond_pago":       CambioCondPagoHandler(),
     "socios_negocio/datos_maestros/cambio_region_cpago":    CambioRegionCpagoHandler(),
     "socios_negocio/datos_maestros/bloqueo_cofase":         BloqueoCofaseHandler(),
-    "socios_negocio/gestion_clientes/agregar_linea":        AgregarLineaHandler(),
     "socios_negocio/gestion_clientes/actualizar_margen_tp": ActualizarMargenTPHandler(),
     "socios_negocio/gestion_clientes/actualizar_nc":        ActualizarNcHandler(),
     "socios_negocio/gestion_clientes/actualizar_esp":       ActualizarEspHandler(),
-    "socios_negocio/gestion_clientes/eliminar_cliente":     EliminarClienteHandler(),
     "socios_negocio/log_precios/agregar_precio":            AgregarPrecioHandler(),
     "socios_negocio/log_precios/crear_log":                 CrearLogHandler(),
     "socios_negocio/log_precios/eliminar_log":              EliminarLogHandler(),
