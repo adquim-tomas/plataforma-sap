@@ -1,49 +1,10 @@
-import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 
-import { HeartbeatDot } from "@/components/atoms/HeartbeatDot"
 import { Label } from "@/components/atoms/Label"
 import { StatusPill } from "@/components/atoms/StatusPill"
 import { useAuth } from "@/lib/auth"
 import { MODULES, type ModuleEntry } from "@/lib/modules"
-import { useSapHealth } from "@/lib/useSapHealth"
 import { cn } from "@/lib/utils"
-
-const SAP_LABEL: Record<"ok" | "fail" | "pending", string> = {
-  ok: "online",
-  fail: "offline",
-  pending: "verificando",
-}
-
-const SAP_TEXT: Record<"ok" | "fail" | "pending", string> = {
-  ok: "text-ok",
-  fail: "text-fail",
-  pending: "text-muted-foreground",
-}
-
-function fmtCountdown(secondsTotal: number): string {
-  if (secondsTotal <= 0) return "—"
-  const h = Math.floor(secondsTotal / 3600)
-  const m = Math.floor((secondsTotal % 3600) / 60)
-  const s = secondsTotal % 60
-  if (h > 0) return `${h}h ${String(m).padStart(2, "0")}m`
-  return `${m}m ${String(s).padStart(2, "0")}s`
-}
-
-function useTokenCountdown(expSeconds: number | undefined): string {
-  const [text, setText] = useState(() =>
-    expSeconds ? fmtCountdown(expSeconds - Math.floor(Date.now() / 1000)) : "—"
-  )
-  useEffect(() => {
-    if (!expSeconds) return
-    const tick = () =>
-      setText(fmtCountdown(expSeconds - Math.floor(Date.now() / 1000)))
-    tick()
-    const id = window.setInterval(tick, 1000)
-    return () => window.clearInterval(id)
-  }, [expSeconds])
-  return text
-}
 
 const TODAY_FMT = new Intl.DateTimeFormat("es-CL", {
   year: "numeric",
@@ -51,16 +12,11 @@ const TODAY_FMT = new Intl.DateTimeFormat("es-CL", {
   day: "2-digit",
 })
 
-// Grid template para la tabla de módulos. md+ muestra columna API.
-const MODULE_COLS_BASE = "grid-cols-[3rem_5rem_1fr_6rem_6rem_8rem]"
-const MODULE_COLS_MD =
-  "md:grid-cols-[3rem_5rem_minmax(0,1fr)_minmax(0,18rem)_6rem_6rem_8rem]"
+const MODULE_COLS_BASE = "grid-cols-[1fr_6rem]"
+const MODULE_COLS_MD = "md:grid-cols-[minmax(0,1fr)_minmax(0,18rem)_6rem]"
 
 export function HomePage() {
   const { payload } = useAuth()
-  const expiresIn = useTokenCountdown(payload?.exp)
-  const ready = MODULES.filter((m) => m.implemented).length
-  const sap = useSapHealth()
 
   return (
     <div className="flex flex-col gap-6">
@@ -81,39 +37,6 @@ export function HomePage() {
         </div>
       </div>
 
-      {/* KPI strip */}
-      <section
-        className="
-          grid grid-cols-1 divide-y divide-border border border-border bg-elev
-          sm:grid-cols-2 sm:divide-x sm:divide-y-0
-          lg:grid-cols-4
-        "
-      >
-        <KpiCell label="módulos listos">
-          <span className="tabular-nums">
-            <span className="text-2xl font-bold">{ready}</span>
-            <span className="ml-1 text-base text-muted-foreground">
-              / {MODULES.length}
-            </span>
-          </span>
-        </KpiCell>
-
-        <KpiCell label="controladores activos">
-          <span className="text-2xl font-bold tabular-nums">{ready}</span>
-        </KpiCell>
-
-        <KpiCell label="sesión sap">
-          <span className="flex items-center gap-2 text-base font-medium">
-            <HeartbeatDot kind={sap.kind} />
-            <span className={SAP_TEXT[sap.kind]}>{SAP_LABEL[sap.kind]}</span>
-          </span>
-        </KpiCell>
-
-        <KpiCell label="token vence">
-          <span className="text-2xl font-bold tabular-nums">{expiresIn}</span>
-        </KpiCell>
-      </section>
-
       {/* Modules table */}
       <section>
         <div className="flex items-baseline justify-between pb-2">
@@ -133,13 +56,9 @@ export function HomePage() {
             )}
             role="row"
           >
-            <HeaderCell>#</HeaderCell>
-            <HeaderCell>código</HeaderCell>
             <HeaderCell>módulo</HeaderCell>
             <HeaderCell className="hidden md:flex">acciones</HeaderCell>
             <HeaderCell>servidor</HeaderCell>
-            <HeaderCell>interfaz</HeaderCell>
-            <HeaderCell>última ejecución</HeaderCell>
           </div>
 
           {/* Rows */}
@@ -195,19 +114,6 @@ function ModuleRow({ module: m, index }: { module: ModuleEntry; index: number })
 
   const inner = (
     <>
-      <Cell className="text-muted-foreground tabular-nums">
-        {String(index + 1).padStart(2, "0")}
-      </Cell>
-      <Cell>
-        <span
-          className={cn(
-            "font-medium",
-            m.implemented ? "text-primary" : "text-muted-foreground",
-          )}
-        >
-          {m.code}
-        </span>
-      </Cell>
       <Cell className={!m.implemented ? "text-muted-foreground" : ""}>
         {m.title.toLowerCase()}
       </Cell>
@@ -217,10 +123,6 @@ function ModuleRow({ module: m, index }: { module: ModuleEntry; index: number })
       <Cell>
         <StatusPill kind={m.implemented ? "ok" : "pending"} />
       </Cell>
-      <Cell>
-        <StatusPill kind="pending" />
-      </Cell>
-      <Cell className="text-muted-foreground">—</Cell>
     </>
   )
 
@@ -250,17 +152,3 @@ function ModuleRow({ module: m, index }: { module: ModuleEntry; index: number })
   )
 }
 
-function KpiCell({
-  label,
-  children,
-}: {
-  label: string
-  children: React.ReactNode
-}) {
-  return (
-    <div className="flex flex-col gap-1.5 px-4 py-3">
-      <Label>{label}</Label>
-      <div className="text-foreground">{children}</div>
-    </div>
-  )
-}

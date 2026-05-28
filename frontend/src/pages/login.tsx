@@ -100,7 +100,6 @@ export function LoginPage() {
           {/* Header */}
           <div className="flex items-center justify-between border-b border-border-strong px-5 py-3">
             <Label>inicio de sesión</Label>
-            <Label>auth · v1</Label>
           </div>
 
           {/* Form body */}

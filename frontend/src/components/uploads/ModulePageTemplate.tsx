@@ -46,15 +46,15 @@ export function ModulePageTemplate({ path, category, title, description }: Modul
         <Button
           variant="link"
           onClick={() => navigate("/")}
-          className="h-auto p-0 text-[0.74rem] text-muted-foreground hover:text-primary"
+          className="h-auto p-0 text-[0.74rem] text-foreground hover:text-primary"
         >
-          volver
+          ← volver
         </Button>
       </div>
 
-      {/* Selector de acción */}
+      {/* Selector de operación */}
       <section>
-        <Label>acción</Label>
+        <Label>operación</Label>
         <div className="relative mt-2 max-w-xl">
           <select
             value={selected.id}
@@ -74,6 +74,11 @@ export function ModulePageTemplate({ path, category, title, description }: Modul
             ▾
           </span>
         </div>
+        {selected.help.description && (
+          <p className="mt-2 max-w-xl text-[0.78rem] text-muted-foreground">
+            {selected.help.description}
+          </p>
+        )}
       </section>
 
       {/* Ayuda — descripción + plantilla descargable + tabla de columnas */}

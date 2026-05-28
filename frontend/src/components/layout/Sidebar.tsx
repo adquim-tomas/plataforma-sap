@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { ChevronDown } from "lucide-react"
-import { NavLink } from "react-router-dom"
+import { NavLink, useLocation } from "react-router-dom"
 
 import { Label } from "@/components/atoms/Label"
 import { StatusPill } from "@/components/atoms/StatusPill"
@@ -45,6 +45,7 @@ function readCollapsedCategories() {
  */
 export function Sidebar() {
   const groupedModules = modulesByCategory()
+  const { pathname } = useLocation()
   const [collapsedCategories, setCollapsedCategories] = useState<Set<ModuleCategory>>(
     () => new Set(readCollapsedCategories()),
   )
@@ -77,13 +78,27 @@ export function Sidebar() {
       "
     >
       <div className="flex h-7 shrink-0 items-center justify-between px-3">
-        <Label>Menú</Label>
+        <Label>módulos</Label>
       </div>
+
+      <NavLink
+        to="/audit"
+        className={({ isActive }) =>
+          cn(
+            "flex h-7 items-center gap-2 border-t border-border px-3",
+            "border-l-2 border-l-transparent transition-colors hover:bg-surface",
+            isActive && "border-l-primary bg-surface text-primary",
+          )
+        }
+      >
+        <Label className={"text-foreground"}>logs</Label>
+      </NavLink>
 
       <div className="flex-1">
         {(Object.entries(groupedModules) as [ModuleCategory, ModuleEntry[]][]).map(
           ([category, modules]) => {
             const isCollapsed = collapsedCategories.has(category)
+            const isCategoryActive = modules.some((m) => pathname === m.path)
 
             return (
               <section key={category}>
@@ -92,18 +107,20 @@ export function Sidebar() {
                   className={cn(
                     "flex w-full items-center justify-between border-t border-border px-3 py-2",
                     "text-left transition-colors hover:bg-surface",
-                    // !isCollapsed && "border-b border-border",
                   )}
                   onClick={() => toggleCategory(category)}
                 >
                   <span className="flex items-center gap-2">
                     <ChevronDown
                       className={cn(
-                        "h-3.5 w-3.5 text-muted-foreground transition-transform",
+                        "h-3.5 w-3.5 transition-transform",
                         isCollapsed && "-rotate-90",
+                        isCategoryActive ? "text-primary" : "text-muted-foreground",
                       )}
                     />
-                    <Label>{CATEGORY_LABEL[category]}</Label>
+                    <Label className={isCategoryActive ? "text-primary" : undefined}>
+                      {CATEGORY_LABEL[category]}
+                    </Label>
                   </span>
                   <span className="text-[0.65rem] text-muted-foreground">
                     {modules.length}
@@ -125,19 +142,6 @@ export function Sidebar() {
           },
         )}
       </div>
-
-      <NavLink
-        to="/audit"
-        className={({ isActive }) =>
-          cn(
-            "flex h-7 items-center gap-2 border-t border-border px-3",
-            "border-l-2 border-l-transparent transition-colors hover:bg-surface",
-            isActive && "border-l-primary bg-surface text-primary",
-          )
-        }
-      >
-        <Label className={"text-foreground"}>logs</Label>
-      </NavLink>
     </aside>
   )
 }
@@ -159,28 +163,11 @@ function SidebarItem({
               "transition-colors",
               isActive && "border-l-primary bg-surface",
               !isActive && "hover:bg-surface",
-              !m.implemented && "opacity-65",
             )
           }
         >
           {({ isActive }) => (
             <>
-              <span
-                className={cn(
-                  "shrink-0 w-9 text-right text-[0.74rem]",
-                  isActive ? "text-primary" : "text-muted-foreground",
-                )}
-              >
-                {m.roman}.
-              </span>
-              <span
-                className={cn(
-                  "shrink-0 w-11 text-[0.7rem]",
-                  isActive ? "font-medium text-primary" : "text-foreground",
-                )}
-              >
-                {m.code}
-              </span>
               <span
                 className={cn(
                   "flex-1 truncate text-[0.78rem]",
@@ -189,7 +176,7 @@ function SidebarItem({
               >
                 {m.title.toLowerCase()}
               </span>
-              <StatusPill kind={m.implemented ? "ok" : "pending"} className="shrink-0" />
+              <StatusPill kind="ok" className="shrink-0" />
             </>
           )}
         </NavLink>
@@ -201,12 +188,6 @@ function SidebarItem({
               "opacity-65",
             )}
           >
-            <span className="shrink-0 w-9 text-right text-[0.74rem] text-muted-foreground">
-              {m.roman}.
-            </span>
-            <span className="shrink-0 w-11 text-[0.7rem] text-muted-foreground">
-              {m.code}
-            </span>
             <span className="flex-1 truncate text-[0.78rem] text-muted-foreground">
               {m.title.toLowerCase()}
             </span>

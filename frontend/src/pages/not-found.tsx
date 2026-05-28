@@ -10,7 +10,6 @@ export function NotFoundPage() {
       {/* Mini status bar */}
       <div className="flex h-7 items-center justify-between border-b border-border-strong px-4 text-[0.74rem]">
         <span className="font-bold tracking-[0.14em]">PEDROPEDIA</span>
-        <span className="text-muted-foreground">v1.0</span>
       </div>
 
       <main className="flex items-start justify-center px-6 py-16">
