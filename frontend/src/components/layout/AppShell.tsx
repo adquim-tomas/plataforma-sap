@@ -113,7 +113,7 @@ export function AppShell() {
             "relative hidden w-full cursor-col-resize bg-transparent md:block " +
             "before:absolute before:inset-y-0 before:left-0 before:w-px " +
             "before:bg-border-strong before:transition-colors " +
-            (isResizing ? "before:bg-primary/60" : "hover:before:bg-primary/45")
+            (isResizing ? "border-2 border-primary/60" : "hover:border-2 hover:border-primary/60")
           }
           onPointerDown={handleResizePointerDown}
         />
