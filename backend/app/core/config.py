@@ -7,9 +7,13 @@ class Settings(BaseSettings):
     # SAP B1
     SAP_BASE_URL: str  # https://sapserver:50000/b1s/v1
     SAP_COMPANY_DB: str  # CLPRDADQUIM / CLTSTADQUIM
-    # Validación del certificado TLS de SAP. False para on-prem con cert
-    # autofirmado; True cuando SAP exponga un cert válido (producción cloud).
-    SAP_VERIFY_SSL: bool = False
+    # Validación del certificado TLS de SAP. True por defecto (producción cloud).
+    # On-prem con cert autofirmado: mantener True y apuntar SAP_CA_BUNDLE al
+    # bundle CA; solo como último recurso usar False (expone a MITM).
+    SAP_VERIFY_SSL: bool = True
+    # Path al bundle CA para SAP on-prem con cert autofirmado (ej. "/certs/sap-ca.pem").
+    # Vacío = usar el store del sistema operativo.
+    SAP_CA_BUNDLE: str = ""
 
     # Service account — para operaciones de la plataforma
     SAP_SERVICE_USER: str

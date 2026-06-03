@@ -88,9 +88,17 @@ class SAPClient:
         self._session: _SAPSession | None = None
         self._credentials: dict[str, str] = {}
         self._lock = asyncio.Lock()  # evita race condition en relogin
+        if not settings.SAP_VERIFY_SSL:
+            logger.warning(
+                "SAP TLS verification is DISABLED (SAP_VERIFY_SSL=False). "
+                "This exposes all SAP traffic to man-in-the-middle attacks. "
+                "Set SAP_VERIFY_SSL=True or configure SAP_CA_BUNDLE in production."
+            )
+        _tls_verify: bool | str = (
+            settings.SAP_CA_BUNDLE if settings.SAP_CA_BUNDLE else settings.SAP_VERIFY_SSL
+        )
         self._http = httpx.AsyncClient(
-            # On-prem con cert autofirmado → SAP_VERIFY_SSL=False; cert válido → True
-            verify=settings.SAP_VERIFY_SSL,
+            verify=_tls_verify,
             timeout=httpx.Timeout(30.0, connect=10.0),
         )
 

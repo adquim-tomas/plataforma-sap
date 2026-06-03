@@ -3,7 +3,7 @@ import { Link } from "react-router-dom"
 import { Label } from "@/components/atoms/Label"
 import { StatusPill } from "@/components/atoms/StatusPill"
 import { useAuth } from "@/lib/auth"
-import { MODULES, type ModuleEntry } from "@/lib/modules"
+import { useModuleRegistry, type SidebarModule } from "@/lib/moduleRegistry"
 import { cn } from "@/lib/utils"
 
 const TODAY_FMT = new Intl.DateTimeFormat("es-CL", {
@@ -17,6 +17,7 @@ const MODULE_COLS_MD = "md:grid-cols-[minmax(0,1fr)_minmax(0,18rem)_6rem]"
 
 export function HomePage() {
   const { payload } = useAuth()
+  const { modules } = useModuleRegistry()
 
   return (
     <div className="flex flex-col gap-6">
@@ -62,8 +63,8 @@ export function HomePage() {
           </div>
 
           {/* Rows */}
-          {MODULES.map((m, i) => (
-            <ModuleRow key={m.code} module={m} index={i} />
+          {modules.map((m, i) => (
+            <ModuleRow key={m.key} module={m} index={i} />
           ))}
         </div>
       </section>
@@ -109,8 +110,9 @@ function Cell({
   )
 }
 
-function ModuleRow({ module: m, index }: { module: ModuleEntry; index: number }) {
+function ModuleRow({ module: m, index }: { module: SidebarModule; index: number }) {
   const animation = { animationDelay: `${index * 24}ms` }
+  const operationCount = m.implemented ? m.operations.length : 0
 
   const inner = (
     <>
@@ -118,7 +120,7 @@ function ModuleRow({ module: m, index }: { module: ModuleEntry; index: number })
         {m.title.toLowerCase()}
       </Cell>
       <Cell className="hidden text-[0.74rem] text-muted-foreground md:flex">
-        {m.actions?.length ? `${m.actions.length} acciones` : "—"}
+        {operationCount ? `${operationCount} acciones` : "—"}
       </Cell>
       <Cell>
         <StatusPill kind={m.implemented ? "ok" : "pending"} />
@@ -151,4 +153,3 @@ function ModuleRow({ module: m, index }: { module: ModuleEntry; index: number })
     </div>
   )
 }
-

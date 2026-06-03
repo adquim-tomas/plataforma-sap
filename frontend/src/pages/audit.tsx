@@ -4,7 +4,7 @@ import { Label } from "@/components/atoms/Label"
 import { StatusPill } from "@/components/atoms/StatusPill"
 import { Button } from "@/components/ui/button"
 import { listOperations, type AuditQuery } from "@/lib/audit"
-import { MODULES } from "@/lib/modules"
+import { useModuleRegistry } from "@/lib/moduleRegistry"
 import { cn } from "@/lib/utils"
 import type { OperationAuditPage, OperationAuditRow } from "@/types"
 
@@ -25,17 +25,6 @@ function formatTimestamp(iso: string): string {
   return Number.isNaN(d.getTime()) ? iso : TS_FMT.format(d)
 }
 
-function moduleOptions(): { value: string; label: string }[] {
-  const out: { value: string; label: string }[] = []
-  for (const m of MODULES) {
-    if (!m.actions) continue
-    for (const a of m.actions) {
-      out.push({ value: a.apiPath, label: `${m.title} · ${a.title}` })
-    }
-  }
-  return out
-}
-
 export function AuditPage() {
   const [filters, setFilters] = useState<AuditQuery>({ limit: PAGE_SIZE, offset: 0 })
   const [page, setPage] = useState<OperationAuditPage | null>(null)
@@ -43,7 +32,17 @@ export function AuditPage() {
   const [error, setError] = useState<string | null>(null)
   const [expanded, setExpanded] = useState<number | null>(null)
 
-  const modules = useMemo(moduleOptions, [])
+  const { modules: registryModules } = useModuleRegistry()
+  const modules = useMemo(() => {
+    const out: { value: string; label: string }[] = []
+    for (const m of registryModules) {
+      if (!m.implemented) continue
+      for (const op of m.operations) {
+        out.push({ value: op.apiPath, label: `${m.title} · ${op.title}` })
+      }
+    }
+    return out
+  }, [registryModules])
 
   useEffect(() => {
     let cancelled = false

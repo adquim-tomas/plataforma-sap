@@ -3,7 +3,7 @@ import { NavLink, useLocation } from "react-router-dom"
 import { HeartbeatDot } from "@/components/atoms/HeartbeatDot"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth"
-import { findModuleByPath } from "@/lib/modules"
+import { useModuleRegistry } from "@/lib/moduleRegistry"
 import { useSapHealth } from "@/lib/useSapHealth"
 import { cn } from "@/lib/utils"
 
@@ -29,13 +29,15 @@ export function StatusBar() {
   const { payload, logout } = useAuth()
   const { pathname } = useLocation()
   const sap = useSapHealth()
+  const { findBySlug } = useModuleRegistry()
 
-  const module = findModuleByPath(pathname)
+  const slug = pathname.startsWith("/uploads/") ? pathname.slice("/uploads/".length) : null
+  const module = slug ? findBySlug(slug) : undefined
   const breadcrumb =
     pathname === "/"
       ? "/"
       : module
-        ? `/ uploads / ${module.code.toLowerCase()}`
+        ? `/ uploads / ${module.title.toLowerCase()}`
         : `/ ${pathname.replace(/^\//, "")}`
 
   const sapTitle = sap.health

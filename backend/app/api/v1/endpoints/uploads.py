@@ -1,6 +1,9 @@
 import logging
+from datetime import date
+from typing import Any, Literal, Union, get_args, get_origin
 
 from fastapi import APIRouter, Depends, UploadFile
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
@@ -90,6 +93,82 @@ HANDLERS = {
     "ventas/entrega/crear_desde_folio":                     CrearDesdeFolioHandler(),
 }
 
+
+# ── Modelos de respuesta para el endpoint de descubrimiento ──────────────────
+
+class FieldMeta(BaseModel):
+    name: str
+    type: Literal["string", "integer", "number", "date"]
+    required: bool
+    description: str
+
+
+class OperationMeta(BaseModel):
+    key: str
+    action: str
+    fields: list[FieldMeta]
+
+
+class ModuleGroupMeta(BaseModel):
+    category: str
+    module: str
+    operations: list[OperationMeta]
+
+
+class ModuleRegistryResponse(BaseModel):
+    modules: dict[str, ModuleGroupMeta]
+
+
+def _resolve_field_type(annotation: Any) -> Literal["string", "integer", "number", "date"]:
+    """Mapea una anotación de tipo Python al string de tipo usado en la API."""
+    origin = get_origin(annotation)
+    if origin is Union:
+        annotation = next(
+            (a for a in get_args(annotation) if a is not type(None)), str
+        )
+    return {str: "string", int: "integer", float: "number", date: "date"}.get(
+        annotation, "string"
+    )
+
+
+@router.get("/modules", response_model=ModuleRegistryResponse)
+async def list_modules(
+    _user: TokenPayload = Depends(get_current_user),
+) -> ModuleRegistryResponse:
+    """
+    Retorna el registro de módulos y operaciones disponibles, derivado de
+    HANDLERS e introspección de los schemas Pydantic de cada handler.
+    El frontend lo usa para construir dinámicamente los selectores de acción.
+    """
+    modules: dict[str, ModuleGroupMeta] = {}
+
+    for key, handler in HANDLERS.items():
+        category, module, action = key.split("/", 2)
+        module_key = f"{category}/{module}"
+
+        fields: list[FieldMeta] = [
+            FieldMeta(
+                name=field_name,
+                type=_resolve_field_type(field_info.annotation),
+                required=field_info.is_required(),
+                description=field_info.description or "",
+            )
+            for field_name, field_info in handler.schema_class.model_fields.items()
+        ]
+
+        op = OperationMeta(key=key, action=action, fields=fields)
+
+        if module_key not in modules:
+            modules[module_key] = ModuleGroupMeta(
+                category=category, module=module, operations=[op]
+            )
+        else:
+            modules[module_key].operations.append(op)
+
+    return ModuleRegistryResponse(modules=modules)
+
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _resolve_handler(module_path: str):
     handler = HANDLERS.get(module_path)

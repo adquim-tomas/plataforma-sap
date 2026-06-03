@@ -1,52 +1,32 @@
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { ChevronDown } from "lucide-react"
 import { NavLink, useLocation } from "react-router-dom"
 
 import { Label } from "@/components/atoms/Label"
 import { StatusPill } from "@/components/atoms/StatusPill"
-import {
-  CATEGORY_LABEL,
-  modulesByCategory,
-  type ModuleCategory,
-  type ModuleEntry,
-} from "@/lib/modules"
+import { CATEGORY_LABELS } from "@/lib/module-extras"
+import { useModuleRegistry, type SidebarModule } from "@/lib/moduleRegistry"
 import { cn } from "@/lib/utils"
 
 const COLLAPSED_CATEGORIES_STORAGE_KEY = "pedropedia.sidebar.collapsed-categories"
+const CATEGORY_ORDER = ["socios_negocio", "compras", "ventas"]
 
-function readCollapsedCategories() {
-  if (typeof window === "undefined") {
-    return [] as ModuleCategory[]
-  }
-
+function readCollapsedCategories(): string[] {
+  if (typeof window === "undefined") return []
   try {
     const raw = window.localStorage.getItem(COLLAPSED_CATEGORIES_STORAGE_KEY)
-    if (!raw) {
-      return [] as ModuleCategory[]
-    }
-
+    if (!raw) return []
     const parsed = JSON.parse(raw) as unknown
-    if (!Array.isArray(parsed)) {
-      return [] as ModuleCategory[]
-    }
-
-    return parsed.filter(
-      (value): value is ModuleCategory =>
-        value === "socios_negocio" || value === "compras" || value === "ventas",
-    )
+    return Array.isArray(parsed) ? (parsed as string[]) : []
   } catch {
-    return [] as ModuleCategory[]
+    return []
   }
 }
 
-/**
- * Sidebar denso — índice operativo. Cada categoría puede colapsarse
- * sin perder el estado entre recargas.
- */
 export function Sidebar() {
-  const groupedModules = modulesByCategory()
+  const { modules } = useModuleRegistry()
   const { pathname } = useLocation()
-  const [collapsedCategories, setCollapsedCategories] = useState<Set<ModuleCategory>>(
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(
     () => new Set(readCollapsedCategories()),
   )
 
@@ -57,7 +37,7 @@ export function Sidebar() {
     )
   }, [collapsedCategories])
 
-  const toggleCategory = (category: ModuleCategory) => {
+  const toggleCategory = (category: string) => {
     setCollapsedCategories((current) => {
       const next = new Set(current)
       if (next.has(category)) {
@@ -68,6 +48,17 @@ export function Sidebar() {
       return next
     })
   }
+
+  const groupedModules = useMemo(() => {
+    const groups: Record<string, SidebarModule[]> = {}
+    for (const m of modules) {
+      if (!groups[m.category]) groups[m.category] = []
+      groups[m.category].push(m)
+    }
+    return groups
+  }, [modules])
+
+  const categories = CATEGORY_ORDER.filter((cat) => groupedModules[cat]?.length)
 
   return (
     <aside
@@ -95,62 +86,54 @@ export function Sidebar() {
       </div>
 
       <div className="flex-1">
-        {(Object.entries(groupedModules) as [ModuleCategory, ModuleEntry[]][]).map(
-          ([category, modules]) => {
-            const isCollapsed = collapsedCategories.has(category)
-            const isCategoryActive = modules.some((m) => pathname === m.path)
+        {categories.map((category) => {
+          const mods = groupedModules[category] ?? []
+          const isCollapsed = collapsedCategories.has(category)
+          const isCategoryActive = mods.some((m) => pathname === m.path)
 
-            return (
-              <section key={category}>
-                <button
-                  type="button"
-                  className={cn(
-                    "flex w-full items-center justify-between border-t border-border px-3 py-2",
-                    "text-left transition-colors hover:bg-surface",
-                  )}
-                  onClick={() => toggleCategory(category)}
-                >
-                  <span className="flex items-center gap-2">
-                    <ChevronDown
-                      className={cn(
-                        "h-3.5 w-3.5 transition-transform",
-                        isCollapsed && "-rotate-90",
-                        isCategoryActive ? "text-primary" : "text-muted-foreground",
-                      )}
-                    />
-                    <Label className={isCategoryActive ? "text-primary" : undefined}>
-                      {CATEGORY_LABEL[category]}
-                    </Label>
-                  </span>
-                  <span className="text-[0.65rem] text-muted-foreground">
-                    {modules.length}
-                  </span>
-                </button>
-
-                {!isCollapsed && (
-                  <ul>
-                    {modules.map((m) => (
-                      <SidebarItem
-                        key={m.code}
-                        module={m}
-                      />
-                    ))}
-                  </ul>
+          return (
+            <section key={category}>
+              <button
+                type="button"
+                className={cn(
+                  "flex w-full items-center justify-between border-t border-border px-3 py-2",
+                  "text-left transition-colors hover:bg-surface",
                 )}
-              </section>
-            )
-          },
-        )}
+                onClick={() => toggleCategory(category)}
+              >
+                <span className="flex items-center gap-2">
+                  <ChevronDown
+                    className={cn(
+                      "h-3.5 w-3.5 transition-transform",
+                      isCollapsed && "-rotate-90",
+                      isCategoryActive ? "text-primary" : "text-muted-foreground",
+                    )}
+                  />
+                  <Label className={isCategoryActive ? "text-primary" : undefined}>
+                    {CATEGORY_LABELS[category] ?? category}
+                  </Label>
+                </span>
+                <span className="text-[0.65rem] text-muted-foreground">
+                  {mods.length}
+                </span>
+              </button>
+
+              {!isCollapsed && (
+                <ul>
+                  {mods.map((m) => (
+                    <SidebarItem key={m.key} module={m} />
+                  ))}
+                </ul>
+              )}
+            </section>
+          )
+        })}
       </div>
     </aside>
   )
 }
 
-function SidebarItem({
-  module: m,
-}: {
-  module: ModuleEntry
-}) {
+function SidebarItem({ module: m }: { module: SidebarModule }) {
   return (
     <li>
       {m.implemented ? (
@@ -180,20 +163,20 @@ function SidebarItem({
             </>
           )}
         </NavLink>
-        ) : (
-          <div
-            className={cn(
-              "flex h-6.5 items-center gap-2 px-3",
-              "border-l-2 border-transparent",
-              "opacity-65",
-            )}
-          >
-            <span className="flex-1 truncate text-[0.78rem] text-muted-foreground">
-              {m.title.toLowerCase()}
-            </span>
-            <StatusPill kind="pending" className="shrink-0" />
-          </div>
-        )}
+      ) : (
+        <div
+          className={cn(
+            "flex h-6.5 items-center gap-2 px-3",
+            "border-l-2 border-transparent",
+            "opacity-65",
+          )}
+        >
+          <span className="flex-1 truncate text-[0.78rem] text-muted-foreground">
+            {m.title.toLowerCase()}
+          </span>
+          <StatusPill kind="pending" className="shrink-0" />
+        </div>
+      )}
     </li>
   )
 }

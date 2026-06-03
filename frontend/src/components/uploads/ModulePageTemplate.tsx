@@ -1,47 +1,29 @@
-import { useMemo, useState } from "react"
+import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 
 import { Label } from "@/components/atoms/Label"
 import { Button } from "@/components/ui/button"
 import { ActionHelp } from "@/components/uploads/ActionHelp"
 import { UploadPanel } from "@/components/uploads/UploadPanel"
-import { findModuleByPath } from "@/lib/modules"
+import type { MergedModule } from "@/lib/moduleRegistry"
 
-interface ModulePageTemplateProps {
-  /** Ruta react-router del módulo (ej. "/uploads/datos-maestros"). */
-  path: string
-  /** Categoría en lenguaje de operador (ej. "socios de negocio"). */
-  category: string
-  /** Título del módulo. */
-  title: string
-  /** Subtítulo en lenguaje plano: qué hace esta pantalla. */
-  description: string
-}
-
-/**
- * Estructura común a todas las páginas de módulo: header + selector de acción +
- * ayuda de la acción + panel de subida. Cada página concreta solo aporta su
- * copy (categoría, título, descripción) y su ruta; las acciones salen del
- * registro `MODULES`.
- */
-export function ModulePageTemplate({ path, category, title, description }: ModulePageTemplateProps) {
+export function ModulePageTemplate({ module }: { module: MergedModule }) {
   const navigate = useNavigate()
-  const module = useMemo(() => findModuleByPath(path), [path])
-  const actions = module?.actions ?? []
-  const [actionId, setActionId] = useState(actions[0]?.id)
+  const actions = module.operations
+  const [actionKey, setActionKey] = useState(actions[0]?.key)
 
-  if (!module || actions.length === 0) return null
+  if (actions.length === 0) return null
 
-  const selected = actions.find((a) => a.id === actionId) ?? actions[0]
+  const selected = actions.find((a) => a.key === actionKey) ?? actions[0]
 
   return (
     <div className="flex flex-col gap-6">
       {/* Header */}
       <div className="flex items-baseline justify-between border-b border-border-strong pb-3">
         <div>
-          <Label>{category}</Label>
-          <h1 className="mt-1 text-lg font-medium">{title}</h1>
-          <p className="mt-1 text-[0.82rem] text-muted-foreground">{description}</p>
+          <Label>{module.categoryLabel}</Label>
+          <h1 className="mt-1 text-lg font-medium">{module.title}</h1>
+          <p className="mt-1 text-[0.82rem] text-muted-foreground">{module.description}</p>
         </div>
         <Button
           variant="link"
@@ -57,12 +39,12 @@ export function ModulePageTemplate({ path, category, title, description }: Modul
         <Label>operación</Label>
         <div className="relative mt-2 max-w-xl">
           <select
-            value={selected.id}
-            onChange={(e) => setActionId(e.target.value)}
+            value={selected.key}
+            onChange={(e) => setActionKey(e.target.value)}
             className="h-10 w-full appearance-none border border-border bg-elev px-3 pr-8 text-[0.82rem] text-foreground outline-none transition-colors focus:border-primary"
           >
             {actions.map((a, i) => (
-              <option key={a.id} value={a.id}>
+              <option key={a.key} value={a.key}>
                 {String(i + 1).padStart(2, "0")} · {a.title}
               </option>
             ))}
@@ -83,7 +65,7 @@ export function ModulePageTemplate({ path, category, title, description }: Modul
 
       {/* Ayuda — descripción + plantilla descargable + tabla de columnas */}
       <ActionHelp
-        key={`help-${selected.id}`}
+        key={`help-${selected.key}`}
         help={selected.help}
         actionTitle={selected.title}
       />
@@ -93,7 +75,7 @@ export function ModulePageTemplate({ path, category, title, description }: Modul
         <Label>subir archivo</Label>
         <div className="mt-2">
           <UploadPanel
-            key={selected.id}
+            key={selected.key}
             apiPath={selected.apiPath}
             schema={selected.schema}
           />
