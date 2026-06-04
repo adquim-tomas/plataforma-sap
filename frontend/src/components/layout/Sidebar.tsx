@@ -69,7 +69,7 @@ export function Sidebar() {
       "
     >
       <NavLink
-        to="/audit"
+        to="/"
         className={({ isActive }) =>
           cn(
             "flex h-7 items-center gap-2 border-b border-border px-3",
@@ -78,12 +78,8 @@ export function Sidebar() {
           )
         }
       >
-        <Label className={"text-foreground"}>logs</Label>
+        <Label className={"text-foreground"}>módulos</Label>
       </NavLink>
-
-      <div className="flex h-7 shrink-0 items-center justify-between px-3">
-        <Label>módulos</Label>
-      </div>
 
       <div className="flex-1">
         {categories.map((category) => {
@@ -129,6 +125,19 @@ export function Sidebar() {
           )
         })}
       </div>
+
+      <NavLink
+        to="/audit"
+        className={({ isActive }) =>
+          cn(
+            "flex h-7 items-center gap-2 border-b border-border px-3",
+            "border-l-2 border-l-transparent transition-colors hover:bg-surface",
+            isActive && "border-l-primary bg-surface text-primary",
+          )
+        }
+      >
+        <Label className={"text-foreground"}>logs</Label>
+      </NavLink>
     </aside>
   )
 }
