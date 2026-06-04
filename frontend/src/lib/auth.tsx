@@ -87,6 +87,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Revocar el token en el backend (best-effort) antes de limpiar local.
     void api.post("/api/v1/auth/logout").catch(() => {})
     clearSession()
+    // Navegación dura para reiniciar el stack del browser completo.
+    // window.location.assign (igual que el interceptor 401) descarta el
+    // historial de React Router, por lo que el botón "atrás" no puede
+    // volver a rutas protegidas de la sesión anterior.
+    window.location.assign("/auth/login")
   }, [clearSession])
 
   const value = useMemo<AuthContextValue>(
