@@ -53,6 +53,15 @@ from app.modules.socios_negocio.log_precios.eliminar_log.router import (
 from app.modules.compras.orden_compra.crear_servicio.router import (
     CrearServicioHandler,
 )
+from app.modules.compras.factura_proveedor.crear_factura.router import (
+    CrearFacturaHandler,
+)
+from app.modules.compras.factura_proveedor.crear_combustible.router import (
+    CrearCombustibleHandler,
+)
+from app.modules.compras.factura_proveedor.interempresa.router import (
+    InterempresaHandler,
+)
 from app.modules.ventas.nota_venta.quitar_folio.router import (
     QuitarFolioHandler,
 )
@@ -87,6 +96,9 @@ HANDLERS = {
     "socios_negocio/log_precios/crear_log":                 CrearLogHandler(),
     "socios_negocio/log_precios/eliminar_log":              EliminarLogHandler(),
     "compras/orden_compra/crear_servicio":                  CrearServicioHandler(),
+    "compras/factura_proveedor/crear_factura":              CrearFacturaHandler(),
+    "compras/factura_proveedor/crear_combustible":          CrearCombustibleHandler(),
+    "compras/factura_proveedor/interempresa":               InterempresaHandler(),
     "ventas/nota_venta/quitar_folio":                       QuitarFolioHandler(),
     "ventas/nota_venta/cancelar_boleta":                    CancelarBoletaHandler(),
     "ventas/nota_venta/cambio_libro":                       CambioLibroHandler(),

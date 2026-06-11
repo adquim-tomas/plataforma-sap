@@ -49,9 +49,7 @@ export const CATEGORY_LABELS: Record<string, string> = {
 }
 
 /** Módulos visibles en sidebar pero sin handler en HANDLERS todavía. */
-export const PLANNED_MODULES: PlannedModule[] = [
-  { key: "compras/factura_proveedores", category: "compras", title: "Factura de Proveedores", order: 5 },
-]
+export const PLANNED_MODULES: PlannedModule[] = []
 
 export const MODULE_EXTRAS: Record<string, ModuleExtras> = {
   "socios_negocio/datos_maestros": {
@@ -77,6 +75,12 @@ export const MODULE_EXTRAS: Record<string, ModuleExtras> = {
     description: "Generación masiva de órdenes de compra a proveedores. Cada fila del Excel se convierte en un documento SAP.",
     categoryLabel: "Compras · Proveedores",
     order: 4,
+  },
+  "compras/factura_proveedor": {
+    title: "Factura de Proveedores",
+    description: "Generación masiva de facturas de proveedor. Una factura genérica, facturas de combustible (ENAP) con sus impuestos, o el traspaso de facturas entre Adquim y Adgreen. Elige qué quieres hacer y sube el Excel.",
+    categoryLabel: "Compras · Proveedores",
+    order: 5,
   },
   "ventas/nota_venta": {
     title: "Nota de Venta",
@@ -336,6 +340,82 @@ export const OPERATION_EXTRAS: Record<string, OperationExtras> = {
       "Operación irreversible una vez aceptada por SAP — verificar las filas en el preview antes de confirmar.",
     ],
     templateFilename: "crear_servicio_template.xlsx",
+  },
+
+  "compras/factura_proveedor/crear_factura": {
+    title: "Crear factura de proveedor",
+    description: "Genera facturas de proveedor — un documento por fila del Excel. Cada factura se crea con su cabecera (proveedor, fechas, folio, sucursal, condición de pago) y exactamente una línea (artículo, cantidad, impuesto, total).",
+    columnHelp: {
+      CardCode: { description: "CardCode del proveedor en SAP (PN+RUT).", example: "PN76543210-1" },
+      DocDate: { description: "Fecha del documento, en formato YYYY-MM-DD.", example: "2026-06-01" },
+      DocDueDate: { description: "Fecha de vencimiento, en formato YYYY-MM-DD.", example: "2026-06-30" },
+      FolioPrefixString: { description: "Prefijo del folio del documento.", example: "33" },
+      FolioNumber: { description: "Número de folio de la factura.", example: "100234" },
+      Sucursal: { description: "ID de sucursal SAP (BPL_IDAssignedToInvoice).", example: "7" },
+      PaymentGroupCode: { description: "Código de la condición de pago (PaymentGroupCode).", example: "10" },
+      ItemCode: { description: "Código del artículo SAP de la línea.", example: "1003001001" },
+      Quantity: { description: "Cantidad de la línea.", example: "1000" },
+      TaxCode: { description: "Código de impuesto SAP de la línea.", example: "IVA" },
+      LineTotal: { description: "Total de la línea en moneda local, como entero (sin decimales).", example: "1250000" },
+      WarehouseCode: { description: "Código de bodega de la línea.", example: "BDLIN001" },
+      CostingCode: { description: "Dimensión analítica 1 (opcional).", example: "10" },
+      CostingCode2: { description: "Dimensión analítica 2 (opcional).", example: "15" },
+      Comments: { description: "Comentario del documento (opcional). Si se deja vacío, se usa el comentario de carga masiva.", example: "Compra junio" },
+    },
+    businessRules: [
+      "Una fila del Excel genera una factura de proveedor en SAP — no se agrupan filas.",
+      "El CardCode del proveedor debe existir en SAP. La acción no crea proveedores nuevos.",
+      "ItemCode y WarehouseCode (bodega) deben existir en SAP.",
+      "La moneda es CLP y el indicador de libro queda fijo en '33', igual que las facturas cargadas por el proceso de Pedro.",
+      "Total se envía como entero — para montos con decimales, redondear antes de subir.",
+      "Operación irreversible una vez aceptada por SAP — verificar las filas en el preview antes de confirmar.",
+    ],
+    templateFilename: "crear_factura_template.xlsx",
+  },
+
+  "compras/factura_proveedor/crear_combustible": {
+    title: "Crear factura de combustible (ENAP)",
+    description: "Genera facturas de combustible con sus líneas de impuesto armadas automáticamente. Por cada fila, el servidor calcula la línea base, el impuesto específico, el impuesto IEV (negativo) y el patio de carga, según el producto y la sucursal. Replica el cálculo del proceso ENAP de Pedro.",
+    columnHelp: {
+      RutEmisor: { description: "RUT del proveedor sin prefijo — el servidor antepone 'PN' para formar el CardCode.", example: "91041000-8" },
+      FolioNumber: { description: "Número de folio de la factura (el prefijo '33' lo pone el servidor).", example: "885421" },
+      DocDate: { description: "Fecha del documento, en formato YYYY-MM-DD.", example: "2026-06-01" },
+      DocDueDate: { description: "Fecha de vencimiento, en formato YYYY-MM-DD.", example: "2026-06-16" },
+      FormaPago: { description: "Forma de pago: 1 = contado, 2 = 15 días.", example: "2" },
+      Sucursal: { description: "Sucursal de entrega: Linares, Maipu, Aconcagua o BioBio.", example: "Linares" },
+      Item: { description: "Producto: GASOLINA 93 NOR RM/RP, GASOLINA 97 NOR RM/RP, DIESEL o KEROSENE.", example: "DIESEL" },
+      Cantidad: { description: "Cantidad en m³ — el servidor la convierte a litros (×1000).", example: "10" },
+      Precio: { description: "Monto neto del producto, antes de descontar fondo de estabilización y ley 21811.", example: "5000000" },
+      PrecioImp: { description: "Monto del impuesto específico (línea IMP). Si la fila tiene IEV positivo, el servidor anula este monto.", example: "800000" },
+      PrecioImpIev: { description: "Monto del impuesto IEV en positivo — el servidor lo aplica como línea negativa. Aplica a DIESEL.", example: "200000" },
+      KeroFondoEst: { description: "Crédito fondo de estabilización (Ley 19030). Se descuenta del precio neto. 0 si no aplica.", example: "0" },
+      KeroLey21811: { description: "Compensación kerosene (Ley 21811). Se descuenta del precio neto. 0 si no aplica.", example: "0" },
+      PatioCarga: { description: "Costo de patio de carga (opcional). Si viene, genera una línea extra.", example: "15000" },
+    },
+    businessRules: [
+      "Una fila genera una factura de combustible con varias líneas — base + impuesto específico + IEV negativo + patio de carga, según el producto.",
+      "El proveedor (PN + RUT) debe existir en SAP.",
+      "Sucursal y producto deben ser uno de los valores de la lista — el servidor los mapea a los códigos de SKU y bodega correspondientes.",
+      "KEROSENE no lleva línea de impuesto específico ni IEV; el servidor las omite automáticamente.",
+      "El precio neto se ajusta restando el fondo de estabilización y la compensación ley 21811 antes de armar la línea base.",
+      "Cantidad va en m³ — el servidor la pasa a litros multiplicando por 1000.",
+    ],
+    templateFilename: "crear_combustible_template.xlsx",
+  },
+
+  "compras/factura_proveedor/interempresa": {
+    title: "Factura inter-empresa (Adquim → Adgreen)",
+    description: "Traspasa una factura de venta de Adquim a una factura de proveedor en Adgreen. Por cada folio, el servidor lee la factura de Adquim, remapea la sucursal y la condición de pago a los códigos de Adgreen, fija el proveedor correspondiente y crea la factura de proveedor.",
+    columnHelp: {
+      Folio: { description: "Número de folio de la factura de venta de Adquim (cliente CN77550466-8) a traspasar.", example: "100234" },
+    },
+    businessRules: [
+      "Cada fila entrega solo el folio — el resto lo arma el servidor a partir de la factura de Adquim.",
+      "El folio debe corresponder a exactamente una factura de venta de Adquim. Si no existe o hay más de una, la fila se rechaza.",
+      "La sucursal y la condición de pago se remapean automáticamente de los códigos de Adquim a los de Adgreen; si alguna no tiene equivalencia, la fila se rechaza.",
+      "El proveedor de la factura resultante queda fijo (PN76264437-1) — no se entrega en el Excel.",
+    ],
+    templateFilename: "interempresa_template.xlsx",
   },
 
   "ventas/nota_venta/quitar_folio": {

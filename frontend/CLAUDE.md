@@ -156,7 +156,7 @@ Para módulos no implementados (`implemented: false`), `actions` es `undefined` 
 | II | `gestion-clientes` | `actualizar-margen-tp`, `actualizar-nc`, `actualizar-esp` | ✅ |
 | III | `log-precios` | `agregar-precio`, `crear-log`, `eliminar-log` | ✅ |
 | IV | `orden-compra` | `crear-servicio` | ✅ |
-| V | `factura-proveedor` | — | ⬜ |
+| V | `factura-proveedor` | `crear-factura`, `crear-combustible`, `interempresa` | ✅ |
 | VI | `nota-venta` | `quitar-folio`, `cancelar-boleta`, `cambio-libro` | ✅ |
 | VII | `entrega` | `crear-desde-folio` | ✅ |
 
@@ -210,7 +210,7 @@ Para módulos no implementados (`implemented: false`), `actions` es `undefined` 
 | **Gestión de Clientes** UI | ✅ | Página con selector de acción (dropdown). 3 acciones: actualizar margen+TP, actualizar NC, actualizar ESP |
 | **Log de Precios** UI | ✅ | Página con selector de acción (dropdown). 3 acciones: agregar precio, crear log, eliminar log |
 | **Orden de Compra** UI | ✅ | Página con selector de acción (dropdown). 1 acción: crear OC de servicio |
-| **Factura de Proveedores** UI | ⬜ | sin backend (bloqueado por repo de Pedro) |
+| **Factura de Proveedores** UI | ✅ | Página dinámica con selector de acción. 3 acciones: crear factura, crear factura de combustible (ENAP), factura inter-empresa (Adquim→Adgreen) |
 | **Nota de Venta** UI | ✅ | Página con selector de acción (dropdown). 3 acciones: quitar folio, cancelar boleta, cambio de libro |
 | **Entrega** UI | ✅ | Página con selector de acción (dropdown). 1 acción: crear desde folio |
 | Audit Log page | ✅ | `/audit` con tabla densa, filtros (acción/usuario/recurso/estado), expand row → diff antes/después |

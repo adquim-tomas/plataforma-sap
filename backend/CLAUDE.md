@@ -60,7 +60,7 @@ app/modules/{categoria}/{modulo}/{accion}/
 
 Ejemplo: `socios_negocio/datos_maestros/activar_desactivar/` solo acepta `CardCode`, `Valid`, `Frozen` — cualquier otra columna del Excel se rechaza por Pydantic. Para agregar una segunda acción al mismo módulo, se crea otra subcarpeta hermana (`socios_negocio/datos_maestros/cambio_cartera/`, etc.) y se registra como handler aparte en `HANDLERS`.
 
-El único módulo sin implementar (Factura de Proveedores) **no tiene scaffolding** — su carpeta no existe. Se crea directo bajo este modelo cuando se desbloquee.
+Todos los módulos del roadmap están implementados. El último (Factura de Proveedores) se construyó bajo este modelo a partir del repo de referencia `factura_proovedor/` de Pedro (branch `origin/master`), con tres acciones: `crear_factura`, `crear_combustible` e `interempresa`.
 
 ---
 
@@ -123,6 +123,9 @@ Cada fila es un endpoint concreto. Solo se crean acciones que tienen respaldo co
 | Log de Precios (NX_LOGPRECIOS) | Crear log | `socios_negocio/log_precios/crear_log` | POST `NX_LOGPRECIOS` (header + 1ra línea) | `classlogprecio.py::logPrecio.newLog` + `multi_newLog` (variante adquim) |
 | Log de Precios (NX_LOGPRECIOS) | Eliminar log | `socios_negocio/log_precios/eliminar_log` | DELETE `NX_LOGPRECIOS('{Code}')` (header + todas sus líneas) | `classlogprecio.py::logPrecio.deleteLog` + `deleteManyLog` |
 | Orden de Compra (PurchaseOrders) | Crear OC de servicio | `compras/orden_compra/crear_servicio` | POST `PurchaseOrders` con `DocType=dDocument_Service` (1 línea) | `classdoccompras.py::OC.add_oc_servicio` + `multi_oc_servicio` (variante adquim) |
+| Factura de Proveedores (PurchaseInvoices) | Crear factura | `compras/factura_proveedor/crear_factura` | POST `PurchaseInvoices` (cabecera + 1 línea) | `factura_proovedor` repo: `facturas_xml.py::formatear.baseJSON` + `create_line` |
+| Factura de Proveedores (PurchaseInvoices) | Crear factura de combustible (ENAP) | `compras/factura_proveedor/crear_combustible` | POST `PurchaseInvoices` multi-línea (base + IMP + IMPIEV negativo + patio carga) | `facturas_xml.py::formatear.CreateJSON` + `createdocumentLines` + `create_line` |
+| Factura de Proveedores (PurchaseInvoices) | Factura inter-empresa | `compras/factura_proveedor/interempresa` | GET `Invoices` Adquim por folio → POST `PurchaseInvoices` Adgreen | `facturaInterEmpresa.py::adquimAdgreen.obtener_json_por_folio_adquim` + `extraer_info_json` + `add_factura_adgreen` |
 | Nota de Venta (Invoices) | Quitar folio | `ventas/nota_venta/quitar_folio` | PATCH `Invoices({DocEntry})` con `FolioPrefixString=null` + `FolioNumber=null` | `classInvoice.py::boletas.quitar_folio` + `multi_folio` |
 | Nota de Venta (Invoices) | Cancelar boleta | `ventas/nota_venta/cancelar_boleta` | POST `Invoices({DocEntry})/Cancel` | `classInvoice.py::boletas.cancel_boleta` + `multi_cancel` |
 | Nota de Venta (Invoices) | Cambio de libro | `ventas/nota_venta/cambio_libro` | PATCH `Invoices({DocEntry})` con `U_IX_Ind='NT'` | `classInvoice.py::boletas.cambio_libro` + `multi_libro` |
@@ -319,6 +322,68 @@ Difieren solo en el verbo y el cuerpo SAP:
   (incluye `BPL_IDAssignedToInvoice`). La variante adclean omite ese campo
   y queda fuera de scope hasta identificarla como acción separada.
 
+#### Patrón compartido del módulo Factura de Proveedores
+
+Las tres acciones del módulo terminan en un **POST `PurchaseInvoices`**.
+Comparten valores fijos de servidor (igual que el repo `factura_proovedor` de
+Pedro): `DocCurrency="CLP"`, `U_IX_Ind="33"` y `Comments="cargado por carga
+masiva -carga facturas proovedor"`. El prefijo de folio es `"33"`. El repo de
+Pedro es un pipeline de ingesta de DTE (XML) de combustible; acá se exponen
+sus operaciones como acciones Excel-driven, sin el parseo de XML.
+
+#### Factura de Proveedores — Crear factura
+
+- Campos: `CardCode` (PN+RUT), `DocDate`, `DocDueDate`, `FolioPrefixString`,
+  `FolioNumber`, `Sucursal` (int — `BPL_IDAssignedToInvoice`),
+  `PaymentGroupCode`, `ItemCode`, `Quantity`, `TaxCode`, `LineTotal` (int),
+  `WarehouseCode`, `CostingCode` (opc.), `CostingCode2` (opc.), `Comments` (opc.).
+- POST `PurchaseInvoices` con cabecera + exactamente una línea. Una fila = una
+  factura.
+- Validadores SAP: `card_code_exists`, `item_code_exists`, `warehouse_exists`.
+- Pedro: `facturas_xml.py::formatear.baseJSON` + `create_line` (forma genérica
+  de cabecera/línea de su pipeline de facturas de proveedor).
+
+#### Factura de Proveedores — Crear factura de combustible (ENAP)
+
+- Campos: `RutEmisor` (sin prefijo — el servicio antepone `PN`), `FolioNumber`,
+  `DocDate`, `DocDueDate`, `FormaPago` (`1`=contado→28, `2`=15 días→10),
+  `Sucursal` (enum Linares/Maipu/Aconcagua/BioBio), `Item` (enum de productos),
+  `Cantidad` (m³, ×1000 a litros), `Precio` (int), `PrecioImp` (int, default 0),
+  `PrecioImpIev` (int positivo, default 0), `KeroFondoEst` (default 0),
+  `KeroLey21811` (default 0), `PatioCarga` (opc.).
+- POST `PurchaseInvoices` multi-línea. El servicio arma según producto/sucursal:
+  - línea **Base** (`TaxCode=IVA`, SKU del combustible; DIESEL resuelve SKU por
+    sucursal).
+  - línea **IMP** (`TaxCode=FUEL_PD`) — omitida para KEROSENE; si hay IEV
+    positivo, su monto se anula (Pedro: `if precioimpiev>0: precioimp=0`).
+  - línea **IMPIEV** (`TaxCode=FUEL_PD`, cantidad y monto negativos) — omitida
+    cuando el SKU IEV resuelve a 0 (KEROSENE).
+  - línea **PATIOCARGA** (`TaxCode=IVA`, SKU fijo `1511059225`) si viene.
+  - Precio neto base ajustado: `Precio - KeroFondoEst - KeroLey21811`.
+- Sucursal/Item/FormaPago son enums validados por Pydantic; los catálogos
+  (SKU, bodega, impuestos) son fijos. Validador SAP: `card_code_exists` (PN+RUT).
+- Pedro: `facturas_xml.py::formatear.CreateJSON` + `createdocumentLines` +
+  `create_line` (port fiel de los mapas `sucursalSap`/`bodegaSap`/`skuSAP`/
+  `dieselSKU`/`skuIMPSAP`/`skuIMPIEVSAP`/`condPagoSap`).
+
+#### Factura de Proveedores — Factura inter-empresa (Adquim → Adgreen)
+
+- Único campo: `Folio` (int — FolioNumber de la factura de venta de Adquim).
+- El servicio hace GET `Invoices` filtrando por `FolioNumber={Folio}` y el
+  cliente origen `CN77550466-8`. Si no hay match → `invoice_not_found`; si hay
+  más de uno → `invoice_ambiguous`. Copia cabecera + líneas, remapea
+  `BPL_IDAssignedToInvoice` (dict sucursales) y `PaymentGroupCode` (dict cond.
+  pago) Adquim→Adgreen, fija `CardCode="PN76264437-1"` (proveedor destino) y
+  hace POST `PurchaseInvoices`.
+- Como `entrega/crear_desde_folio`, **no tiene** `validator.py`: los chequeos
+  dependen del mismo GET que arma el POST y viven en `sap_service.py`.
+- **Nota single-company:** en Pedro esto cruza dos empresas SAP (lee de Adquim,
+  escribe en Adgreen, con dos sesiones). La plataforma opera con una sola cuenta
+  de servicio contra una CompanyDB; qué empresa ve el origen vs. destino es una
+  decisión de despliegue. El código de transformación es fiel a Pedro.
+- Pedro: `facturaInterEmpresa.py::adquimAdgreen.obtener_json_por_folio_adquim`
+  + `extraer_info_json` + `add_factura_adgreen`.
+
 ### Documentos SAP estándar — POST vs PATCH
 
 Los módulos UDO (Datos Maestros, Gestión de Clientes, Log de Precios) usan **PATCH** sobre registros existentes. Los documentos estándar de SAP (PurchaseOrders, Invoices, etc.) usan **POST** para crear documentos nuevos. El `BaseUploadHandler` no diferencia: el handler decide en `sync_row()` si llamar `sap.post(...)` o `sap.patch(...)`. Errores SAP (`SAPValidationError`, `SAPError`) se reportan por fila en `RowError` con `source=sap` independientemente del método.
@@ -352,7 +417,9 @@ Los módulos UDO (Datos Maestros, Gestión de Clientes, Log de Precios) usan **P
 | **Nota de Venta — Cancelar boleta** | ✅ | POST `Invoices({DocEntry})/Cancel` (Pedro-grounded en `boletas.cancel_boleta`) |
 | **Nota de Venta — Cambio de libro** | ✅ | PATCH `Invoices` con `U_IX_Ind='NT'` (Pedro-grounded en `boletas.cambio_libro`) |
 | **Entrega — Crear desde folio** | ✅ | POST `DeliveryNotes` desde factura por folio '33' (Pedro-grounded en `entrega.add_multi_entrega`) |
-| Factura de Proveedores | ⬜ | bloqueado por repo de Pedro |
+| **Factura de Proveedores — Crear factura** | ✅ | POST `PurchaseInvoices` cabecera + 1 línea (Pedro-grounded en `facturas_xml.py::baseJSON` + `create_line`) |
+| **Factura de Proveedores — Crear factura de combustible (ENAP)** | ✅ | POST `PurchaseInvoices` multi-línea con impuestos de combustible (Pedro-grounded en `facturas_xml.py::CreateJSON` + `createdocumentLines`) |
+| **Factura de Proveedores — Factura inter-empresa** | ✅ | GET `Invoices` Adquim → POST `PurchaseInvoices` Adgreen (Pedro-grounded en `facturaInterEmpresa.py::adquimAdgreen`) |
 
 ---
 

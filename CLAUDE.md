@@ -44,7 +44,7 @@ El usuario sube un Excel; las filas válidas se insertan en SAP y las inválidas
 | # | Módulo | Estado |
 |---|--------|--------|
 | 4 | Orden de Compra | ✅ |
-| 5 | Factura de Proveedores | ⬜ | IMPORTANTE - Pedir repo a Pedro y dejar para el final
+| 5 | Factura de Proveedores | ✅ |
 
 ### Ventas — Clientes
 | # | Módulo | Estado |
