@@ -17,6 +17,23 @@
 
 ## Arquitectura
 
+### Pool de clientes SAP (`app/core/sap_instance.py`)
+
+El service account abre una sesión por **CompanyDB**. Cada operador elige su
+CompanyDB al login (entre las 6: Adquim/Adclean/Adgreen × TST/PRD) y los
+endpoints resuelven el cliente con `get_sap_client(user.company_db)`. La
+sesión se cachea y se reutiliza entre requests; el pool se cierra en el
+shutdown del app (`close_all`). `get_default_sap_client()` devuelve el cliente
+de la CompanyDB default del `.env` (lo usa `/health/sap` y el lifespan al
+precalentar).
+
+Acciones acotadas a una empresa puntual pueden declarar
+`allowed_company_dbs: tuple[str, ...]` en el handler (atributo de
+`BaseUploadHandler`); las acciones de Factura de Proveedores la usan para
+restringirse a Adquim (ENAP/Esmax/inter-empresa son Adquim-only). Si una
+operación no aplica a la CompanyDB del operador, no aparece en
+`/uploads/modules` y los endpoints devuelven 404 si igual la invocan.
+
 ### SAPClient (`app/core/sap_client.py`)
 
 Cliente httpx async con sesión automática contra SAP B1 Service Layer.
@@ -373,26 +390,41 @@ Valores fijos de servidor en los tres (igual que Pedro): `DocCurrency="CLP"`,
   Esmax trae **varias líneas de producto** por factura; la sucursal/bodega salen
   de `CmnaOrigen`. El impuesto específico se extrae del texto de la línea
   (`UTM/M3`) y el IEV negativo cuando aplica. SKU según Stgo (BPL 6) vs. resto.
-- Pedro: `facturas_esmax.py::xmlEsmax._datos_desde_xml` + `formatearEsmax`.
+- **Check de desviación**: el parser compara `MntTotal - IVA` del XML contra
+  la suma de `LineTotal` que arma. Si la divergencia supera `DEVIATION_MAX`
+  (10 %) la factura se rechaza con error de fila — port del `desviacion` de
+  `cargarSapEsmax.crear_lista_folios_esmax` (Pedro lo deja en 100 % por
+  default, acá lo apretamos para cazar drift real).
+- Pedro: `facturas_esmax.py::xmlEsmax._datos_desde_xml` + `formatearEsmax`
+  + `cargarSapEsmax.crear_lista_folios_esmax`.
 
 #### Factura de Proveedores — Inter-empresa (Adquim → Adgreen)
 
-- **No sube archivos.** El operador entrega `fecha_min` / `fecha_max`. Sirven dos
-  endpoints dedicados: `POST /uploads/interempresa/preview` (lista folios
-  candidatos marcando los ya cargados) y `POST /uploads/interempresa/run`
-  (crea los faltantes). El handler en `HANDLERS` es solo un stub de registro
-  para que la acción aparezca en `/uploads/modules` con sus campos.
-- `InterempresaService` (en `interempresa/service.py`) abre **dos sesiones SAP**
-  vía `sap_instance.login_company_client(company_db)`: lee `Invoices` de Adquim
-  (`SAP_COMPANY_DB_ADQUIM`) filtrando `DocDate` en rango y cliente
-  `CN77550466-8`; por cada folio chequea en Adgreen (`SAP_COMPANY_DB_ADGREEN`)
-  si ya existe (`purchase_invoice_exists` con proveedor `PN76264437-1`); para los
-  faltantes remapea `BPL_IDAssignedToInvoice` y `PaymentGroupCode` (dicts
-  Adquim→Adgreen), fija `CardCode="PN76264437-1"` y hace POST.
-- Requiere config `SAP_COMPANY_DB_ADQUIM` / `SAP_COMPANY_DB_ADGREEN` (mismo
-  service account, dos CompanyDB). Si faltan → error `interempresa_not_configured`.
+- **No sube archivos.** El operador entrega `fecha_min` / `fecha_max` +
+  `target_company_db` (Adgreen TST o PRD). Sirven dos endpoints dedicados:
+  `POST /uploads/interempresa/preview` (lista folios candidatos marcando los
+  ya cargados) y `POST /uploads/interempresa/run` (crea los faltantes). El
+  handler en `HANDLERS` es solo un stub de registro para que la acción
+  aparezca en `/uploads/modules` con sus campos.
+- **Origen = sesión del operador** (`user.company_db`). El handler declara
+  `allowed_company_dbs = ADQUIM_DBS`, así que solo aparece y solo es
+  invocable cuando el operador inició sesión en una CompanyDB de Adquim.
+  **Destino = `target_company_db` del request**, validado contra `ADGREEN_DBS`.
+  El service abre dos sesiones vía `get_sap_client(...)` (origen + destino),
+  ambas atendidas por el pool global.
+- Flujo: lee `Invoices` de la Adquim del operador filtrando `DocDate` en
+  rango y cliente `CN77550466-8`; por cada folio chequea en la Adgreen
+  elegida si ya existe (`purchase_invoice_exists` con proveedor
+  `PN76264437-1`); para los faltantes remapea `BPL_IDAssignedToInvoice` y
+  `PaymentGroupCode` (dicts Adquim→Adgreen), fija `CardCode="PN76264437-1"`
+  y hace POST.
+- Catálogo de empresas en `compras/factura_proveedor/_company_dbs.py`
+  (`ADQUIM_DBS`, `ADCLEAN_DBS`, `ADGREEN_DBS`).
 - Pedro: `facturaInterEmpresa.py::adquimAdgreen` (`proceso_completo`,
-  `buscar_folios_adquim_entre_fechas`, `extraer_info_json`, `add_factura_adgreen`).
+  `buscar_folios_adquim_entre_fechas`, `extraer_info_json`,
+  `add_factura_adgreen`). En sus notebooks Pedro corre con
+  `adquim=CLPRDADQUIM` y `adgreen=CLTSTADGREEN` (lee de PRD, escribe en TST
+  para validar antes de productivo).
 
 ### Documentos SAP estándar — POST vs PATCH
 

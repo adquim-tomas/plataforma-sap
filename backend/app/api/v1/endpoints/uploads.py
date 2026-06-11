@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
 from app.core.database import get_db
-from app.core.sap_instance import sap_service
+from app.core.sap_instance import get_sap_client
 from app.modules.shared.base_router import PreviewResult, UploadResult
 from app.modules.shared.base_schema import InvalidFileError, ModuleNotFoundError
 from app.schemas.auth import TokenPayload
@@ -153,16 +153,20 @@ def _resolve_field_type(annotation: Any) -> Literal["string", "integer", "number
 
 @router.get("/modules", response_model=ModuleRegistryResponse)
 async def list_modules(
-    _user: TokenPayload = Depends(get_current_user),
+    user: TokenPayload = Depends(get_current_user),
 ) -> ModuleRegistryResponse:
     """
-    Retorna el registro de módulos y operaciones disponibles, derivado de
-    HANDLERS e introspección de los schemas Pydantic de cada handler.
-    El frontend lo usa para construir dinámicamente los selectores de acción.
+    Retorna el registro de módulos y operaciones disponibles para la CompanyDB
+    en la que el operador inició sesión. Si un handler declara
+    `allowed_company_dbs`, sólo aparece cuando `user.company_db` está en la
+    lista (ej.: ENAP/Esmax/interempresa son Adquim-only).
     """
     modules: dict[str, ModuleGroupMeta] = {}
 
     for key, handler in HANDLERS.items():
+        allowed = getattr(handler, "allowed_company_dbs", None)
+        if allowed is not None and user.company_db not in allowed:
+            continue
         category, module, action = key.split("/", 2)
         module_key = f"{category}/{module}"
 
@@ -190,11 +194,16 @@ async def list_modules(
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-def _resolve_handler(module_path: str):
+def _resolve_handler(module_path: str, company_db: str | None = None):
     handler = HANDLERS.get(module_path)
     if not handler:
         raise ModuleNotFoundError(
             f"Acción '{module_path}' no existe o no está habilitada.",
+        )
+    allowed = getattr(handler, "allowed_company_dbs", None)
+    if company_db is not None and allowed is not None and company_db not in allowed:
+        raise ModuleNotFoundError(
+            f"La acción '{module_path}' no aplica a la CompanyDB '{company_db}'.",
         )
     return handler
 
@@ -208,7 +217,7 @@ def _ensure_excel(file: UploadFile) -> None:
 async def preview_file(
     module_path: str,
     file: UploadFile,
-    _user: TokenPayload = Depends(get_current_user),
+    user: TokenPayload = Depends(get_current_user),
 ) -> PreviewResult:
     """
     Dry-run del pipeline: parsea + valida (Pydantic + validaciones de negocio
@@ -218,13 +227,14 @@ async def preview_file(
     (CardCodes inexistentes, zonales no encontrados, etc.) sin incurrir en
     una carga parcial.
     """
-    handler = _resolve_handler(module_path)
+    handler = _resolve_handler(module_path, user.company_db)
     _ensure_excel(file)
     file_bytes = await file.read()
+    sap = await get_sap_client(user.company_db)
     return await handler.validate_only(
         file_bytes=file_bytes,
         filename=file.filename or "",
-        sap=sap_service,
+        sap=sap,
     )
 
 
@@ -236,11 +246,16 @@ async def preview_file(
 @router.post("/interempresa/preview", response_model=InterempresaPreview)
 async def interempresa_preview(
     body: InterempresaParams,
-    _user: TokenPayload = Depends(get_current_user),
+    user: TokenPayload = Depends(get_current_user),
 ) -> InterempresaPreview:
     """Lista los folios de Adquim→Adgreen del rango, marcando los ya cargados.
-    No escribe nada en SAP."""
-    return await InterempresaService.preview(body.fecha_min, body.fecha_max)
+    No escribe nada en SAP. El origen es la CompanyDB del operador (debe ser
+    una de Adquim); el destino lo elige en el formulario."""
+    return await InterempresaService.preview(
+        body.fecha_min, body.fecha_max,
+        source_company_db=user.company_db,
+        target_company_db=body.target_company_db,
+    )
 
 
 @router.post("/interempresa/run", response_model=UploadResult)
@@ -250,9 +265,12 @@ async def interempresa_run(
     db: Session = Depends(get_db),
 ) -> UploadResult:
     """Crea en Adgreen las facturas de proveedor faltantes del rango. Los folios
-    ya cargados se omiten."""
+    ya cargados se omiten. El origen es la CompanyDB del operador (Adquim);
+    el destino lo elige en el formulario."""
     return await InterempresaService.run(
-        body.fecha_min, body.fecha_max, user.sub, db
+        body.fecha_min, body.fecha_max, user.sub, db,
+        source_company_db=user.company_db,
+        target_company_db=body.target_company_db,
     )
 
 
@@ -272,7 +290,7 @@ async def upload_xml(
     Ejemplo:
       POST /uploads/xml/compras/factura_proveedor/crear_combustible_enap
     """
-    handler = _resolve_handler(module_path)
+    handler = _resolve_handler(module_path, user.company_db)
     if not isinstance(handler, XmlUploadHandler):
         raise ModuleNotFoundError(
             f"La acción '{module_path}' no es de carga por XML.",
@@ -288,11 +306,12 @@ async def upload_xml(
             )
         xml_files.append(_XmlFile(filename=f.filename, content=await f.read()))
 
+    sap = await get_sap_client(user.company_db)
     return await handler.process_xml(
         files=xml_files,
         username=user.sub,
         company_db=user.company_db,
-        sap=sap_service,
+        sap=sap,
         db=db,
     )
 
@@ -310,15 +329,16 @@ async def upload_file(
     Ejemplos:
       POST /uploads/socios_negocio/datos_maestros/activar_desactivar
     """
-    handler = _resolve_handler(module_path)
+    handler = _resolve_handler(module_path, user.company_db)
     _ensure_excel(file)
     file_bytes = await file.read()
 
+    sap = await get_sap_client(user.company_db)
     return await handler.process(
         file_bytes=file_bytes,
         filename=file.filename,
         username=user.sub,
         company_db=user.company_db,
-        sap=sap_service,
+        sap=sap,
         db=db,
     )

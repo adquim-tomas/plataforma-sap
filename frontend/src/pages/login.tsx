@@ -8,7 +8,17 @@ import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth"
 import { useSapHealth } from "@/lib/useSapHealth"
 
-const COMPANY_DBS = ["CLPRDADQUIM", "CLTSTADQUIM"]
+// Lista de CompanyDBs por empresa. La acción que ve cada operador depende de
+// la CompanyDB que elija acá (ENAP/Esmax/Inter-empresa son Adquim-only — ver
+// `allowed_company_dbs` en backend/app/modules/compras/factura_proveedor/_company_dbs.py).
+const COMPANY_DBS = [
+  { value: "CLPRDADQUIM",  label: "Adquim · producción"  },
+  { value: "CLTSTADQUIM",  label: "Adquim · test"        },
+  { value: "CLPRDADCLEAN", label: "Adclean · producción" },
+  { value: "CLTSTADCLEAN", label: "Adclean · test"       },
+  { value: "CLPRDADGREEN", label: "Adgreen · producción" },
+  { value: "CLTSTADGREEN", label: "Adgreen · test"       },
+]
 
 interface LocationState {
   from?: { pathname: string }
@@ -40,7 +50,7 @@ export function LoginPage() {
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
-  const [companyDb, setCompanyDb] = useState(COMPANY_DBS[1])
+  const [companyDb, setCompanyDb] = useState(COMPANY_DBS[1].value)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -159,8 +169,8 @@ export function LoginPage() {
                   className={`${inputClass} appearance-none pr-6`}
                 >
                   {COMPANY_DBS.map((db) => (
-                    <option key={db} value={db}>
-                      {db}
+                    <option key={db.value} value={db.value}>
+                      {db.label} — {db.value}
                     </option>
                   ))}
                 </select>

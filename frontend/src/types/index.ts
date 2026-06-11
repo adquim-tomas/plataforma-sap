@@ -79,6 +79,8 @@ export interface InterempresaCandidate {
 export interface InterempresaPreview {
   fecha_min: string
   fecha_max: string
+  source_company_db: string
+  target_company_db: string
   total: number
   to_create: number
   already_loaded: number

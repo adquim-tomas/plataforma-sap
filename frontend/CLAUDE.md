@@ -164,6 +164,23 @@ Para módulos no implementados (`implemented: false`), `actions` es `undefined` 
 
 ---
 
+## CompanyDB y visibilidad de acciones
+
+Al login el operador elige una de **6 CompanyDBs** del ecosistema H&Co
+(Adquim/Adclean/Adgreen × producción/test) desde el dropdown de `login.tsx`.
+La CompanyDB elegida va al JWT (`payload.company_db`) y el backend resuelve
+**todas** las operaciones SAP contra esa empresa (pool por CompanyDB).
+
+La lista de acciones que el operador ve depende de su CompanyDB: el endpoint
+`/uploads/modules` ya filtra por `allowed_company_dbs` del handler, así que el
+registry dinámico del frontend (`useModuleRegistry`) no necesita filtrar otra
+vez. ENAP/Esmax/inter-empresa son **Adquim-only**: un operador logueado en
+Adclean o Adgreen no ve esas acciones.
+
+Para inter-empresa, el origen es la sesión Adquim del operador (no se elige
+en la UI); solo el destino Adgreen (TST o PRD) es seleccionable. El
+`InterempresaPanel` lee `useAuth().payload.company_db` para mostrar el origen.
+
 ## Auth
 
 - Backend: `POST /api/v1/auth/login` con `{username, password, company_db}` → `{access_token, token_type, expires_in}` (tipos en [`src/types/index.ts`](src/types/index.ts)).

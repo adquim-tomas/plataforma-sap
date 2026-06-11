@@ -52,14 +52,21 @@ export async function uploadXml(
   return data
 }
 
-/** Inter-empresa: preview de los folios Adquim→Adgreen de un rango de fechas. */
+/** Inter-empresa: preview de los folios Adquim→Adgreen de un rango de fechas.
+ * El origen Adquim lo deriva el backend del JWT del operador; el destino
+ * Adgreen lo elige el operador en la UI. */
 export async function interempresaPreview(
   fechaMin: string,
   fechaMax: string,
+  targetCompanyDb: string,
 ): Promise<InterempresaPreview> {
   const { data } = await api.post<InterempresaPreview>(
     "/api/v1/uploads/interempresa/preview",
-    { fecha_min: fechaMin, fecha_max: fechaMax },
+    {
+      fecha_min: fechaMin,
+      fecha_max: fechaMax,
+      target_company_db: targetCompanyDb,
+    },
   )
   return data
 }
@@ -68,10 +75,15 @@ export async function interempresaPreview(
 export async function interempresaRun(
   fechaMin: string,
   fechaMax: string,
+  targetCompanyDb: string,
 ): Promise<UploadResult> {
   const { data } = await api.post<UploadResult>(
     "/api/v1/uploads/interempresa/run",
-    { fecha_min: fechaMin, fecha_max: fechaMax },
+    {
+      fecha_min: fechaMin,
+      fecha_max: fechaMax,
+      target_company_db: targetCompanyDb,
+    },
   )
   return data
 }

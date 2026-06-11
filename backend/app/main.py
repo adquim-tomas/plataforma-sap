@@ -23,7 +23,8 @@ from app.core.sap_client import (
     SAPNotFoundError,
     SAPValidationError,
 )
-from app.core.sap_instance import sap_service
+from app.core.sap_instance import close_all as close_sap_pool
+from app.core.sap_instance import get_default_sap_client
 from app.modules.shared.base_schema import APIError, ErrorResponse, ErrorSource
 
 logging.basicConfig(level=logging.INFO)
@@ -59,19 +60,14 @@ async def lifespan(app: FastAPI):
     _prune_revoked_tokens()
 
 
-    # Startup: conectar service account a SAP.
-    # No bloqueamos el arranque si SAP está caído: /api/v1/health/sap reporta el estado
-    # y cada llamada concreta reintenta login si la sesión no está válida.
+    # Startup: precalentar el cliente SAP del service account contra la
+    # CompanyDB default. El pool soporta una sesión por CompanyDB; el resto se
+    # crean on-demand cuando un operador con otra DB entra.
+    # No bloqueamos el arranque si SAP está caído: /api/v1/health/sap reporta el
+    # estado y cada llamada concreta reintenta login si la sesión no está válida.
     try:
-        await asyncio.wait_for(
-            sap_service.login(
-                settings.SAP_COMPANY_DB,
-                settings.SAP_SERVICE_USER,
-                settings.SAP_SERVICE_PASSWORD,
-            ),
-            timeout=10.0,
-        )
-        logger.info("SAP service account connected")
+        await asyncio.wait_for(get_default_sap_client(), timeout=10.0)
+        logger.info("SAP service account connected (default CompanyDB)")
     except Exception as exc:  # noqa: BLE001 — el arranque nunca debe colgarse por SAP
         logger.warning(
             "SAP service account login failed/timed out at startup (%s); "
@@ -81,10 +77,10 @@ async def lifespan(app: FastAPI):
 
     yield  # app corriendo
 
-    # Shutdown: cerrar sesión SAP limpiamente
+    # Shutdown: cerrar todas las sesiones del pool limpiamente
     try:
-        await sap_service.logout()
-        logger.info("SAP service account disconnected")
+        await close_sap_pool()
+        logger.info("SAP service account pool closed")
     except SAPError as exc:
         logger.warning("SAP logout failed at shutdown: %s", exc)
 

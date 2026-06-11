@@ -111,6 +111,12 @@ class BaseUploadHandler(ABC, Generic[SchemaT]):
     @abstractmethod
     def sap_module(self) -> str: ...
 
+    # Por defecto una acción está disponible en cualquier CompanyDB. Las
+    # acciones acotadas a un negocio puntual lo sobreescriben (por ejemplo, las
+    # de factura_proveedor solo aplican a Adquim — no a Adclean ni a Adgreen).
+    # `None` = sin restricción. Tupla = lista cerrada de CompanyDB permitidos.
+    allowed_company_dbs: tuple[str, ...] | None = None
+
     @abstractmethod
     async def apply_sap(self, sap: SAPClient, row: SchemaT) -> None:
         """Ejecuta la operación SAP de la acción sobre una fila ya validada."""

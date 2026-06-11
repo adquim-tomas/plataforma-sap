@@ -7,7 +7,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 
 from app.core.sap_client import SAPAuthError, SAPConnectionError, SAPError
-from app.core.sap_instance import sap_service
+from app.core.sap_instance import get_default_sap_client
 
 router = APIRouter(prefix="/health", tags=["health"])
 logger = logging.getLogger(__name__)
@@ -39,9 +39,11 @@ async def sap_health() -> SapHealth:
     """
     checked_at = datetime.now()
     try:
-        await asyncio.wait_for(
-            sap_service._ensure_session(), timeout=PING_TIMEOUT_SECONDS
+        client = await asyncio.wait_for(
+            get_default_sap_client(), timeout=PING_TIMEOUT_SECONDS
         )
+        # Forzar un re-ensure por si la sesión cacheada expiró
+        await asyncio.wait_for(client._ensure_session(), timeout=PING_TIMEOUT_SECONDS)
     except asyncio.TimeoutError:
         return SapHealth(
             ok=False,
@@ -72,5 +74,5 @@ async def sap_health() -> SapHealth:
             checked_at=checked_at,
         )
 
-    expires_at = sap_service._session.expires_at if sap_service._session else None
+    expires_at = client._session.expires_at if client._session else None
     return SapHealth(ok=True, code="ok", expires_at=expires_at, checked_at=checked_at)

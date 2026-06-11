@@ -1,4 +1,5 @@
 from app.core.sap_client import SAPClient
+from app.modules.compras.factura_proveedor._company_dbs import ADQUIM_DBS
 from app.modules.compras.factura_proveedor.interempresa.schema import InterempresaParams
 from app.modules.shared.base_router import BaseUploadHandler
 
@@ -6,11 +7,16 @@ from app.modules.shared.base_router import BaseUploadHandler
 class InterempresaHandler(BaseUploadHandler[InterempresaParams]):
     """
     Stub de registro: existe para que la acción aparezca en /uploads/modules con
-    sus 'campos' (fecha_min, fecha_max) y el frontend arme el formulario de rango
-    de fechas. La ejecución NO pasa por el pipeline de archivos: la sirven los
-    endpoints dedicados `/uploads/interempresa/preview` y `/uploads/interempresa/run`
+    sus 'campos' (fecha_max, target_company_db) y el frontend arme el formulario.
+    El origen es siempre la sesión Adquim del operador (`user.company_db`); el
+    destino lo elige el operador (Adgreen TST o PRD).
+
+    La ejecución NO pasa por el pipeline de archivos: la sirven los endpoints
+    dedicados `/uploads/interempresa/preview` y `/uploads/interempresa/run`
     (ver `InterempresaService`).
     """
+
+    allowed_company_dbs = ADQUIM_DBS
 
     @property
     def schema_class(self) -> type[InterempresaParams]:

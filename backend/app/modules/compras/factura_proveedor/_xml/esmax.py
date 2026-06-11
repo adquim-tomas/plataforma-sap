@@ -14,6 +14,14 @@ U_IX_IND = "33"
 FOLIO_PREFIX = "33"
 COMMENTS = "cargado por carga masiva -carga facturas proovedor"
 
+# Máxima desviación tolerada entre el total declarado en el XML (MntTotal - IVA)
+# y la suma de LineTotal calculada por el armador. Pedro la deja parametrizable
+# en `cargarSapEsmax.crear_lista_folios_esmax(desviacion=100)` (default 100%,
+# esencialmente desactivada). Acá usamos un umbral real (10%): si Pedro alguna
+# vez la usó en serio fue para cazar drift de cálculo. Si los DTE reales
+# muestran que necesita aflojarse, subir este valor.
+DEVIATION_MAX = 0.10  # 10 %
+
 # 'MAIPU'/'MAIPÚ': Pedro tenía un artefacto de codificación en la clave; se
 # incluyen ambas variantes para robustez ante el CmnaOrigen del XML.
 _SUCURSAL_SAP = {
@@ -126,6 +134,13 @@ def _parse_dte(content: bytes) -> dict:
         kero_fondo_est = xr.one_or_join(f(".//Documento/DscRcgGlobal/ValorDR",
                                           ".//ns:Documento/ns:DscRcgGlobal/ns:ValorDR")) or 0
 
+    # Totales declarados en el XML — sirven para el chequeo de desviación
+    # contra la suma de líneas calculadas (cargarSapEsmax.crear_lista_folios_esmax).
+    mnt_total = xr.one_or_join(f(".//Documento/Encabezado/Totales/MntTotal",
+                                 ".//ns:Documento/ns:Encabezado/ns:Totales/ns:MntTotal"))
+    iva_total = xr.one_or_join(f(".//Documento/Encabezado/Totales/IVA",
+                                 ".//ns:Documento/ns:Encabezado/ns:Totales/ns:IVA"))
+
     if not folio:
         raise ValueError("no se encontró Folio en el XML")
     if not rut:
@@ -137,7 +152,7 @@ def _parse_dte(content: bytes) -> dict:
         "folio": folio_num, "rut": rut, "fecha": fecha, "fecha_venc": fecha_venc,
         "forma_pago": forma_pago, "comuna": comuna, "item": item, "item_det": item_det,
         "item_cod": item_cod, "cantidad": cantidad, "unmd": unmd, "precio": precio,
-        "kero_fondo_est": kero_fondo_est,
+        "kero_fondo_est": kero_fondo_est, "mnt_total": mnt_total, "iva_total": iva_total,
     }
 
 
@@ -205,6 +220,25 @@ def parse(filename: str, content: bytes) -> ParsedInvoice:
 
     sucursal_id, almacen = _SUCURSAL_SAP[d["comuna"]]
     lines = _build_lines(d, sucursal_id, almacen)
+
+    # Chequeo de desviación: total del documento (sin IVA) vs. suma de LineTotal
+    # calculada. Si la divergencia supera DEVIATION_MAX, se rechaza la factura
+    # antes de tocar SAP. Pedro hace lo mismo en `crear_lista_folios_esmax`.
+    if d["mnt_total"] is not None:
+        try:
+            mnt_total_doc = float(d["mnt_total"]) - float(d["iva_total"] or 0)
+            calculado = float(sum(line["LineTotal"] for line in lines))
+            if mnt_total_doc > 0 and abs(mnt_total_doc - calculado) / mnt_total_doc > DEVIATION_MAX:
+                raise ValueError(
+                    f"desviación entre total del documento ({mnt_total_doc:.0f}) "
+                    f"y la suma calculada de líneas ({calculado:.0f}) supera "
+                    f"{DEVIATION_MAX * 100:.0f}%"
+                )
+        except (TypeError, ValueError) as e:
+            # Si el chequeo es por mala data (no total), propagar como ValueError
+            # para que el handler lo reporte como error de fila.
+            if "desviación" in str(e):
+                raise
 
     card_code = f"PN{d['rut']}"
     payload = {

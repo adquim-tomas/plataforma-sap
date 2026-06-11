@@ -4,11 +4,11 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from app.core.config import settings
 from app.core.sap_client import SAPClient, SAPError, SAPValidationError
-from app.core.sap_instance import login_company_client
+from app.core.sap_instance import get_sap_client
 from app.models.audit import OperationAudit, OperationStatus
 from app.models.upload import BatchStatus, ErrorType, UploadBatch, UploadError
+from app.modules.compras.factura_proveedor._company_dbs import ADGREEN_DBS, ADQUIM_DBS
 from app.modules.compras.factura_proveedor.interempresa.schema import (
     InterempresaCandidate,
     InterempresaPreview,
@@ -59,14 +59,26 @@ class InterempresaService:
     # ── Helpers ────────────────────────────────────────────────────────────────
 
     @staticmethod
-    def _ensure_configured() -> None:
-        if not settings.SAP_COMPANY_DB_ADQUIM or not settings.SAP_COMPANY_DB_ADGREEN:
+    def _validate_dbs(source: str, target: str) -> None:
+        """
+        Valida que el origen sea una CompanyDB de Adquim y el destino una de
+        Adgreen. El origen viene de la sesión del operador (`user.company_db`),
+        que ya está acotada por `allowed_company_dbs` del handler. El destino
+        es elegido por el operador desde la UI.
+        """
+        if source not in ADQUIM_DBS:
             raise APIError(
-                "La carga inter-empresa no está configurada: faltan las "
-                "CompanyDB de Adquim y/o Adgreen (SAP_COMPANY_DB_ADQUIM / "
-                "SAP_COMPANY_DB_ADGREEN).",
-                code="interempresa_not_configured",
-                status_code=503,
+                f"La carga inter-empresa requiere haber iniciado sesión en una "
+                f"CompanyDB de Adquim. Sesión actual: '{source}'.",
+                code="interempresa_source_invalido",
+                status_code=403,
+            )
+        if target not in ADGREEN_DBS:
+            raise APIError(
+                f"El destino '{target}' no es una CompanyDB de Adgreen. "
+                f"Valores válidos: {', '.join(ADGREEN_DBS)}.",
+                code="interempresa_target_invalido",
+                status_code=422,
             )
 
     @classmethod
@@ -120,31 +132,36 @@ class InterempresaService:
     # ── Preview ──────────────────────────────────────────────────────────────
 
     @classmethod
-    async def preview(cls, fecha_min: date, fecha_max: date) -> InterempresaPreview:
-        cls._ensure_configured()
-        adquim = await login_company_client(settings.SAP_COMPANY_DB_ADQUIM)
-        adgreen = await login_company_client(settings.SAP_COMPANY_DB_ADGREEN)
-        try:
-            invoices = await cls._source_invoices(adquim, fecha_min, fecha_max)
-            candidates: list[InterempresaCandidate] = []
-            for inv in invoices:
-                folio = int(inv["FolioNumber"])
-                already = await SAPValidator.purchase_invoice_exists(
-                    adgreen, folio, cls.TARGET_CARD_CODE
-                )
-                candidates.append(InterempresaCandidate(
-                    folio=folio,
-                    doc_date=inv.get("DocDate"),
-                    already_loaded=already,
-                ))
-        finally:
-            await adquim.logout()
-            await adgreen.logout()
+    async def preview(
+        cls,
+        fecha_min: date,
+        fecha_max: date,
+        source_company_db: str,
+        target_company_db: str,
+    ) -> InterempresaPreview:
+        cls._validate_dbs(source_company_db, target_company_db)
+        adquim = await get_sap_client(source_company_db)
+        adgreen = await get_sap_client(target_company_db)
+
+        invoices = await cls._source_invoices(adquim, fecha_min, fecha_max)
+        candidates: list[InterempresaCandidate] = []
+        for inv in invoices:
+            folio = int(inv["FolioNumber"])
+            already = await SAPValidator.purchase_invoice_exists(
+                adgreen, folio, cls.TARGET_CARD_CODE
+            )
+            candidates.append(InterempresaCandidate(
+                folio=folio,
+                doc_date=inv.get("DocDate"),
+                already_loaded=already,
+            ))
 
         already_count = sum(1 for c in candidates if c.already_loaded)
         return InterempresaPreview(
             fecha_min=fecha_min,
             fecha_max=fecha_max,
+            source_company_db=source_company_db,
+            target_company_db=target_company_db,
             total=len(candidates),
             to_create=len(candidates) - already_count,
             already_loaded=already_count,
@@ -155,68 +172,71 @@ class InterempresaService:
 
     @classmethod
     async def run(
-        cls, fecha_min: date, fecha_max: date, username: str, db: Session
+        cls,
+        fecha_min: date,
+        fecha_max: date,
+        username: str,
+        db: Session,
+        source_company_db: str,
+        target_company_db: str,
     ) -> UploadResult:
-        cls._ensure_configured()
-        adquim = await login_company_client(settings.SAP_COMPANY_DB_ADQUIM)
-        adgreen = await login_company_client(settings.SAP_COMPANY_DB_ADGREEN)
+        cls._validate_dbs(source_company_db, target_company_db)
+        adquim = await get_sap_client(source_company_db)
+        adgreen = await get_sap_client(target_company_db)
 
         errors: list[RowError] = []
         skipped: list[RowError] = []
         audits: list[OperationAudit] = []
         success = 0
-        total = 0
-        try:
-            invoices = await cls._source_invoices(adquim, fecha_min, fecha_max)
-            total = len(invoices)
-            for idx, inv in enumerate(invoices):
-                row_number = idx + 1
-                folio = int(inv["FolioNumber"])
 
-                if await SAPValidator.purchase_invoice_exists(
-                    adgreen, folio, cls.TARGET_CARD_CODE
-                ):
-                    skipped.append(RowError(
-                        row=row_number, field=None, source=ErrorSource.API,
-                        code="already_loaded",
-                        message=f"Folio {folio} ya está cargado en Adgreen — omitido.",
-                    ))
-                    continue
+        # Sesiones SAP cacheadas por el pool — no hay que cerrarlas acá.
+        invoices = await cls._source_invoices(adquim, fecha_min, fecha_max)
+        total = len(invoices)
+        for idx, inv in enumerate(invoices):
+            row_number = idx + 1
+            folio = int(inv["FolioNumber"])
 
-                try:
-                    payload = cls._transform(inv, folio)
-                    await adgreen.post("PurchaseInvoices", payload)
-                except APIError as e:
-                    errors.append(RowError(
-                        row=row_number, field=None, source=ErrorSource.API,
-                        code=e.code, message=e.message,
-                    ))
-                    continue
-                except SAPValidationError as e:
-                    errors.append(RowError(
-                        row=row_number, field=None, source=ErrorSource.SAP,
-                        code="sap_validation", sap_code=e.sap_code,
-                        message=f"Folio {folio}: {e}",
-                    ))
-                    continue
-                except SAPError as e:
-                    errors.append(RowError(
-                        row=row_number, field=None, source=ErrorSource.SAP,
-                        code="sap_error",
-                        message=f"Folio {folio}: error SAP inesperado — {e}",
-                    ))
-                    continue
-
-                success += 1
-                audits.append(OperationAudit(
-                    row_index=row_number, username=username,
-                    sap_module=cls.SAP_MODULE, resource_id=str(folio),
-                    fields_before=None, fields_after=payload,
-                    status=OperationStatus.OK,
+            if await SAPValidator.purchase_invoice_exists(
+                adgreen, folio, cls.TARGET_CARD_CODE
+            ):
+                skipped.append(RowError(
+                    row=row_number, field=None, source=ErrorSource.API,
+                    code="already_loaded",
+                    message=f"Folio {folio} ya está cargado en Adgreen — omitido.",
                 ))
-        finally:
-            await adquim.logout()
-            await adgreen.logout()
+                continue
+
+            try:
+                payload = cls._transform(inv, folio)
+                await adgreen.post("PurchaseInvoices", payload)
+            except APIError as e:
+                errors.append(RowError(
+                    row=row_number, field=None, source=ErrorSource.API,
+                    code=e.code, message=e.message,
+                ))
+                continue
+            except SAPValidationError as e:
+                errors.append(RowError(
+                    row=row_number, field=None, source=ErrorSource.SAP,
+                    code="sap_validation", sap_code=e.sap_code,
+                    message=f"Folio {folio}: {e}",
+                ))
+                continue
+            except SAPError as e:
+                errors.append(RowError(
+                    row=row_number, field=None, source=ErrorSource.SAP,
+                    code="sap_error",
+                    message=f"Folio {folio}: error SAP inesperado — {e}",
+                ))
+                continue
+
+            success += 1
+            audits.append(OperationAudit(
+                row_index=row_number, username=username,
+                sap_module=cls.SAP_MODULE, resource_id=str(folio),
+                fields_before=None, fields_after=payload,
+                status=OperationStatus.OK,
+            ))
 
         error_count = len(errors)
         skipped_count = len(skipped)
@@ -228,9 +248,9 @@ class InterempresaService:
         filename = f"interempresa {fecha_min.isoformat()}..{fecha_max.isoformat()}"
 
         batch = cls._save_batch(
-            db=db, username=username, filename=filename, total_rows=total,
-            success_rows=success, error_rows=error_count, skipped_rows=skipped_count,
-            status=status, errors=errors, audits=audits,
+            db=db, username=username, company_db=target_company_db, filename=filename,
+            total_rows=total, success_rows=success, error_rows=error_count,
+            skipped_rows=skipped_count, status=status, errors=errors, audits=audits,
         )
         logger.info(
             "Batch %s | %s | %s creadas / %s omitidas / %s error de %s | usuario: %s",
@@ -245,15 +265,15 @@ class InterempresaService:
 
     @classmethod
     def _save_batch(
-        cls, *, db, username, filename, total_rows, success_rows, error_rows,
-        skipped_rows, status, errors, audits,
+        cls, *, db, username, company_db, filename, total_rows, success_rows,
+        error_rows, skipped_rows, status, errors, audits,
     ) -> UploadBatch:
         _source_to_type = {
             ErrorSource.API: ErrorType.VALIDATION,
             ErrorSource.SAP: ErrorType.SAP,
         }
         batch = UploadBatch(
-            username=username, company_db=settings.SAP_COMPANY_DB_ADGREEN,
+            username=username, company_db=company_db,
             sap_module=cls.SAP_MODULE, filename=filename, total_rows=total_rows,
             success_rows=success_rows, error_rows=error_rows,
             skipped_rows=skipped_rows, status=status,
