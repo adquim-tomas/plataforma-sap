@@ -15,6 +15,7 @@ import {
   MODULE_EXTRAS,
   OPERATION_EXTRAS,
   PLANNED_MODULES,
+  type OperationInputKind,
 } from "@/lib/module-extras"
 import type { ActionHelp, ColumnHelp, ColumnType, ModuleSchema } from "@/lib/modules"
 
@@ -52,6 +53,7 @@ export interface MergedOperation {
   action: string
   title: string
   apiPath: string
+  inputKind: OperationInputKind
   schema: ModuleSchema
   help: ActionHelp
 }
@@ -151,6 +153,7 @@ function buildModules(data: BackendRegistry): SidebarModule[] {
           action: op.action,
           title: oExtras.title ?? autoTitle(op.action),
           apiPath: op.key,
+          inputKind: oExtras.inputKind ?? "excel",
           schema,
           help,
         }

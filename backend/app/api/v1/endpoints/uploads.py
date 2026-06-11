@@ -53,15 +53,23 @@ from app.modules.socios_negocio.log_precios.eliminar_log.router import (
 from app.modules.compras.orden_compra.crear_servicio.router import (
     CrearServicioHandler,
 )
-from app.modules.compras.factura_proveedor.crear_factura.router import (
-    CrearFacturaHandler,
+from app.modules.compras.factura_proveedor.crear_combustible_enap.router import (
+    CrearCombustibleEnapHandler,
 )
-from app.modules.compras.factura_proveedor.crear_combustible.router import (
-    CrearCombustibleHandler,
+from app.modules.compras.factura_proveedor.crear_combustible_esmax.router import (
+    CrearCombustibleEsmaxHandler,
 )
 from app.modules.compras.factura_proveedor.interempresa.router import (
     InterempresaHandler,
 )
+from app.modules.compras.factura_proveedor.interempresa.schema import (
+    InterempresaParams,
+    InterempresaPreview,
+)
+from app.modules.compras.factura_proveedor.interempresa.service import (
+    InterempresaService,
+)
+from app.modules.shared.xml_router import XmlUploadHandler, _XmlFile
 from app.modules.ventas.nota_venta.quitar_folio.router import (
     QuitarFolioHandler,
 )
@@ -96,8 +104,8 @@ HANDLERS = {
     "socios_negocio/log_precios/crear_log":                 CrearLogHandler(),
     "socios_negocio/log_precios/eliminar_log":              EliminarLogHandler(),
     "compras/orden_compra/crear_servicio":                  CrearServicioHandler(),
-    "compras/factura_proveedor/crear_factura":              CrearFacturaHandler(),
-    "compras/factura_proveedor/crear_combustible":          CrearCombustibleHandler(),
+    "compras/factura_proveedor/crear_combustible_enap":     CrearCombustibleEnapHandler(),
+    "compras/factura_proveedor/crear_combustible_esmax":    CrearCombustibleEsmaxHandler(),
     "compras/factura_proveedor/interempresa":               InterempresaHandler(),
     "ventas/nota_venta/quitar_folio":                       QuitarFolioHandler(),
     "ventas/nota_venta/cancelar_boleta":                    CancelarBoletaHandler(),
@@ -217,6 +225,75 @@ async def preview_file(
         file_bytes=file_bytes,
         filename=file.filename or "",
         sap=sap_service,
+    )
+
+
+# ── Carga inter-empresa (lee de SAP por rango de fechas, no sube archivos) ───
+#
+# Rutas específicas: se definen ANTES del catch-all `/{module_path:path}` para
+# que no las capture el endpoint genérico de Excel.
+
+@router.post("/interempresa/preview", response_model=InterempresaPreview)
+async def interempresa_preview(
+    body: InterempresaParams,
+    _user: TokenPayload = Depends(get_current_user),
+) -> InterempresaPreview:
+    """Lista los folios de Adquim→Adgreen del rango, marcando los ya cargados.
+    No escribe nada en SAP."""
+    return await InterempresaService.preview(body.fecha_min, body.fecha_max)
+
+
+@router.post("/interempresa/run", response_model=UploadResult)
+async def interempresa_run(
+    body: InterempresaParams,
+    user: TokenPayload = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> UploadResult:
+    """Crea en Adgreen las facturas de proveedor faltantes del rango. Los folios
+    ya cargados se omiten."""
+    return await InterempresaService.run(
+        body.fecha_min, body.fecha_max, user.sub, db
+    )
+
+
+# ── Carga por XML (varios .xml a la vez) ─────────────────────────────────────
+
+@router.post("/xml/{module_path:path}", response_model=UploadResult)
+async def upload_xml(
+    module_path: str,
+    files: list[UploadFile],
+    user: TokenPayload = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> UploadResult:
+    """
+    Carga de facturas de proveedor a partir de XML DTE (uno por factura). El
+    backend parsea cada XML, salta los folios ya cargados en SAP y crea el resto.
+
+    Ejemplo:
+      POST /uploads/xml/compras/factura_proveedor/crear_combustible_enap
+    """
+    handler = _resolve_handler(module_path)
+    if not isinstance(handler, XmlUploadHandler):
+        raise ModuleNotFoundError(
+            f"La acción '{module_path}' no es de carga por XML.",
+        )
+    if not files:
+        raise InvalidFileError("No se adjuntaron archivos XML.")
+
+    xml_files: list[_XmlFile] = []
+    for f in files:
+        if not f.filename or not f.filename.lower().endswith(".xml"):
+            raise InvalidFileError(
+                f"Solo se aceptan archivos .xml ({f.filename or 'sin nombre'} rechazado)."
+            )
+        xml_files.append(_XmlFile(filename=f.filename, content=await f.read()))
+
+    return await handler.process_xml(
+        files=xml_files,
+        username=user.sub,
+        company_db=user.company_db,
+        sap=sap_service,
+        db=db,
     )
 
 

@@ -19,6 +19,13 @@ class Settings(BaseSettings):
     SAP_SERVICE_USER: str
     SAP_SERVICE_PASSWORD: str
 
+    # Carga inter-empresa (Factura de Proveedores → interempresa). El service
+    # account se loguea a estas dos CompanyDB (mismo Service Layer) para leer las
+    # facturas de venta de Adquim y crear las facturas de proveedor en Adgreen.
+    # Vacío = acción inter-empresa deshabilitada (devuelve error de config).
+    SAP_COMPANY_DB_ADQUIM: str = ""
+    SAP_COMPANY_DB_ADGREEN: str = ""
+
     # Base de datos
     DATABASE_URL: str
 

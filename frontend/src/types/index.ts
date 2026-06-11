@@ -53,6 +53,9 @@ export interface UploadResult {
   error_rows: number
   status: string
   errors: RowError[]
+  // Folios omitidos (ya cargados en SAP) — carga por XML / inter-empresa.
+  skipped_rows?: number
+  skipped?: RowError[]
 }
 
 export interface PreviewResult {
@@ -61,6 +64,25 @@ export interface PreviewResult {
   valid_rows: number
   error_rows: number
   errors: RowError[]
+  skipped_rows?: number
+  skipped?: RowError[]
+}
+
+// ── Factura de Proveedores · inter-empresa (`interempresa/schema.py`) ─────────
+
+export interface InterempresaCandidate {
+  folio: number
+  doc_date: string | null
+  already_loaded: boolean
+}
+
+export interface InterempresaPreview {
+  fecha_min: string
+  fecha_max: string
+  total: number
+  to_create: number
+  already_loaded: number
+  candidates: InterempresaCandidate[]
 }
 
 // ── Bitácora (`backend/app/api/v1/endpoints/audit.py`) ───────────────────────

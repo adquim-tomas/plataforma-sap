@@ -59,6 +59,10 @@ class UploadResult(BaseModel):
     error_rows: int
     status: str
     errors: list[RowError]
+    # Filas/folios omitidos (ya cargados en SAP) — solo carga por XML. Default
+    # vacío para las acciones Excel.
+    skipped_rows: int = 0
+    skipped: list[RowError] = []
 
 
 class PreviewResult(BaseModel):
@@ -68,6 +72,8 @@ class PreviewResult(BaseModel):
     valid_rows: int
     error_rows: int
     errors: list[RowError]
+    skipped_rows: int = 0
+    skipped: list[RowError] = []
 
 
 @dataclass
@@ -439,6 +445,7 @@ class BaseUploadHandler(ABC, Generic[SchemaT]):
         status: BatchStatus,
         errors: list[RowError],
         audits: list["_AuditCapture"] | None = None,
+        skipped_rows: int = 0,
     ) -> UploadBatch:
         batch = UploadBatch(
             username=username,
@@ -448,6 +455,7 @@ class BaseUploadHandler(ABC, Generic[SchemaT]):
             total_rows=total_rows,
             success_rows=success_rows,
             error_rows=error_rows,
+            skipped_rows=skipped_rows,
             status=status,
         )
         db.add(batch)

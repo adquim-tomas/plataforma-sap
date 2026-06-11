@@ -1,27 +1,42 @@
-from pydantic import ConfigDict, Field
+from datetime import date
+
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.modules.shared.base_schema import RowBase
 
 # ── Acción: Factura inter-empresa (Adquim → Adgreen) ─────────────────────────
 #
-# Port de `facturaInterEmpresa.py::adquimAdgreen` de Pedro. El operador entrega
-# únicamente el folio de una factura de venta de Adquim (cliente
-# `CN77550466-8`); el servidor la lee, remapea sucursal y condición de pago a
-# los códigos de Adgreen, fija el proveedor `PN76264437-1` y crea la factura de
-# proveedor (`PurchaseInvoices`) correspondiente.
+# A diferencia del resto del módulo, esta acción NO sube archivos: lee directo
+# de SAP. El operador indica un rango de fechas; el backend busca en Adquim las
+# facturas de venta emitidas al cliente Adgreen (`CN77550466-8`) en ese rango,
+# filtra las que ya fueron cargadas en Adgreen y crea las faltantes como
+# facturas de proveedor (`PurchaseInvoices`, proveedor `PN76264437-1`).
 #
-# Nota de arquitectura: en Pedro esto cruza DOS empresas SAP (lee de Adquim,
-# escribe en Adgreen, con dos sesiones distintas). La plataforma opera con una
-# sola cuenta de servicio contra una empresa; el detalle de empresa origen vs.
-# destino es una decisión de despliegue (qué CompanyDB tiene la cuenta de
-# servicio). El código de transformación es fiel al de Pedro.
+# Port de `facturaInterEmpresa.py::adquimAdgreen` (buscar_folios_adquim_entre_fechas
+# + obtener_json_por_folio_adquim + extraer_info_json + add_factura_adgreen).
 
 
-class InterempresaRow(RowBase):
-    model_config = ConfigDict(
-        extra="forbid",
-        str_strip_whitespace=True,
-        populate_by_name=True,
-    )
+class InterempresaParams(RowBase):
+    """Parámetros del rango de fechas. Se exponen como 'campos' en /uploads/modules
+    para que el frontend arme el formulario; no son columnas de Excel."""
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
-    Folio: int = Field(..., ge=0, description="FolioNumber de la factura de venta de Adquim (cliente CN77550466-8)")
+    fecha_min: date = Field(..., description="Fecha desde (DocDate ≥) en formato YYYY-MM-DD")
+    fecha_max: date = Field(..., description="Fecha hasta (DocDate ≤) en formato YYYY-MM-DD")
+
+
+class InterempresaCandidate(BaseModel):
+    """Una factura candidata encontrada en Adquim."""
+    folio: int
+    doc_date: str | None = None
+    already_loaded: bool
+
+
+class InterempresaPreview(BaseModel):
+    """Resultado del preview: qué folios se cargarían y cuáles ya están."""
+    fecha_min: date
+    fecha_max: date
+    total: int
+    to_create: int
+    already_loaded: int
+    candidates: list[InterempresaCandidate]

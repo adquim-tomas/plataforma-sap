@@ -10,17 +10,22 @@ interface ActionHelpProps {
   help: ActionHelpData
   /** Título del action — usado como contexto del panel */
   actionTitle: string
+  /** "excel" muestra la tabla de columnas + plantilla descargable. "other"
+   * (XML / inter-empresa) las oculta: no hay columnas de Excel ni plantilla. */
+  variant?: "excel" | "other"
 }
 
 const API_BASE =
   (import.meta.env.VITE_API_URL as string | undefined) ?? "http://localhost:8000"
 
 const COLS =
-  "grid-cols-[8rem_5rem_6rem_minmax(0,1fr)_minmax(0,12rem)]"
+  "grid-cols-[10rem_4.5rem_6rem_minmax(0,1fr)_minmax(0,10rem)]"
 
-export function ActionHelp({ help, actionTitle }: ActionHelpProps) {
+export function ActionHelp({ help, actionTitle, variant = "excel" }: ActionHelpProps) {
   const [open, setOpen] = useState(false)
   const templateUrl = `${API_BASE}/static/templates/${help.templateFilename}`
+  const showTemplate = variant === "excel" && !!help.templateFilename
+  const showColumns = variant === "excel" && help.columns.length > 0
 
   return (
     <section className="border border-border bg-elev">
@@ -37,16 +42,18 @@ export function ActionHelp({ help, actionTitle }: ActionHelpProps) {
             {open ? "ocultar instrucciones" : "ver instrucciones"}
           </Label>
         </button>
-        <a
-          href={templateUrl}
-          download
-          className={cn(
-            buttonVariants({ variant: "outline", size: "sm" }),
-            "text-[0.74rem]",
-          )}
-        >
-          descargar plantilla
-        </a>
+        {showTemplate && (
+          <a
+            href={templateUrl}
+            download
+            className={cn(
+              buttonVariants({ variant: "outline", size: "sm" }),
+              "text-[0.74rem]",
+            )}
+          >
+            descargar plantilla
+          </a>
+        )}
       </div>
 
       {open && (
@@ -60,6 +67,7 @@ export function ActionHelp({ help, actionTitle }: ActionHelpProps) {
           </div>
 
           {/* Tabla de columnas */}
+          {showColumns && (
           <div>
             <Label>columnas del Excel — {actionTitle}</Label>
             <div className="mt-2 border border-border bg-background">
@@ -88,7 +96,7 @@ export function ActionHelp({ help, actionTitle }: ActionHelpProps) {
                   )}
                   role="row"
                 >
-                  <Cell className="font-medium">{c.name}</Cell>
+                  <Cell className="font-medium break-all">{c.name}</Cell>
                   <Cell className="text-muted-foreground">{c.type}</Cell>
                   <Cell>
                     {c.required ? (
@@ -112,6 +120,7 @@ export function ActionHelp({ help, actionTitle }: ActionHelpProps) {
               ))}
             </div>
           </div>
+          )}
 
           {/* Reglas de negocio */}
           {help.businessRules.length > 0 && (
@@ -154,7 +163,7 @@ function Cell({
     <div
       title={title}
       className={cn(
-        "flex items-start border-r border-border px-3 py-1.5 last:border-r-0 wrap-break-word",
+        "flex min-w-0 items-start border-r border-border px-3 py-1.5 last:border-r-0 wrap-break-word",
         className,
       )}
     >

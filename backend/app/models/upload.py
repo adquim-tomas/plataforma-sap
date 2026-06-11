@@ -34,6 +34,9 @@ class UploadBatch(Base):
     total_rows:   Mapped[int]      = mapped_column(Integer, nullable=False)
     success_rows: Mapped[int]      = mapped_column(Integer, default=0)
     error_rows:   Mapped[int]      = mapped_column(Integer, default=0)
+    # Filas omitidas: para carga de facturas por XML, los folios que ya existían
+    # en SAP se saltan (no son éxito ni error). Default 0 para el resto.
+    skipped_rows: Mapped[int]      = mapped_column(Integer, default=0, server_default="0")
     status:       Mapped[str]      = mapped_column(
                                         Enum(BatchStatus),
                                         default=BatchStatus.PENDING,

@@ -6,6 +6,8 @@ Plataforma de carga masiva de datos hacia SAP Business One (B1) vía Service Lay
 El usuario sube un Excel; las filas válidas se insertan en SAP y las inválidas se reportan.
 **Inserciones parciales** — no es todo-o-nada.
 
+> **Excepción de entrada:** el módulo **Factura de Proveedores** no usa Excel. Las facturas de combustible (ENAP / Esmax) se cargan subiendo sus **XML DTE** (varios a la vez), y la carga **inter-empresa** (Adquim→Adgreen) se ejecuta por **rango de fechas leyendo directo de SAP** (sin subir archivos). En ambos casos los folios ya cargados se omiten (no se duplican).
+
 - **Repo:** PedroPedia  
 - **SAP Provider:** H&Co  
 - **Deploy:** Azure  

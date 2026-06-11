@@ -167,6 +167,23 @@ class SAPValidator:
             return False
 
     @staticmethod
+    async def purchase_invoice_exists(
+        sap: SAPClient, folio: int, card_code: str
+    ) -> bool:
+        """
+        Verifica si ya existe una factura de proveedor (`PurchaseInvoices`) con
+        ese `FolioNumber` y `CardCode`. Equivalente a `foliosXML.revisar_folios`
+        de Pedro: se usa para saltar folios ya cargados en la carga por XML y en
+        la carga inter-empresa.
+        """
+        results = await sap.get_all(
+            "PurchaseInvoices",
+            filters=f"FolioNumber eq {folio} and CardCode eq '{card_code}'",
+            select=["DocEntry"],
+        )
+        return len(results) > 0
+
+    @staticmethod
     async def nx_logprecios_exists(sap: SAPClient, code: str) -> bool:
         """Verifica que un header NX_LOGPRECIOS (log de precios) exista en SAP."""
         try:

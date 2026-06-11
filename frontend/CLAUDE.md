@@ -150,13 +150,15 @@ Cada `ModuleEntry` se particiona en **acciones** (`actions: ModuleAction[]`). El
 
 Para módulos no implementados (`implemented: false`), `actions` es `undefined` o vacío y la ruta cae al `ModulePlaceholderPage`. Cuando se implemente el módulo se agregan las acciones al registro y se construye la página propia siguiendo el patrón de `DatosMaestrosPage`/`GestionClientesPage`.
 
+**Modo de entrada por acción (`inputKind`).** Cada operación declara en `OPERATION_EXTRAS` (`lib/module-extras.ts`) un `inputKind`: `"excel"` (default — sube `.xlsx`, `UploadPanel`), `"xml"` (sube N `.xml`, `XmlUploadPanel`) o `"interempresa"` (form de rango de fechas + preview, `InterempresaPanel`). `ModulePageTemplate` ramifica según ese valor; el resto del flujo (selector de acción, `ActionHelp`) se comparte. Para `xml`/`interempresa` el `ActionHelp` usa `variant="other"` (sin tabla de columnas ni plantilla). El resultado puede incluir `skipped` (folios ya cargados, omitidos), que `UploadSummary` y `SkippedReport` muestran aparte de los errores.
+
 | Roman | Slug | Acciones implementadas | Backend |
 |-------|------|------------------------|---------|
 | I | `datos-maestros` | `activar-desactivar`, `cambio-cartera`, `cambio-subgerente`, `cambio-cond-pago`, `cambio-region-cpago`, `bloqueo-cofase` | ✅ |
 | II | `gestion-clientes` | `actualizar-margen-tp`, `actualizar-nc`, `actualizar-esp` | ✅ |
 | III | `log-precios` | `agregar-precio`, `crear-log`, `eliminar-log` | ✅ |
 | IV | `orden-compra` | `crear-servicio` | ✅ |
-| V | `factura-proveedor` | `crear-factura`, `crear-combustible`, `interempresa` | ✅ |
+| V | `factura-proveedor` | `crear-combustible-enap` (XML), `crear-combustible-esmax` (XML), `interempresa` (form) | ✅ |
 | VI | `nota-venta` | `quitar-folio`, `cancelar-boleta`, `cambio-libro` | ✅ |
 | VII | `entrega` | `crear-desde-folio` | ✅ |
 
@@ -210,7 +212,7 @@ Para módulos no implementados (`implemented: false`), `actions` es `undefined` 
 | **Gestión de Clientes** UI | ✅ | Página con selector de acción (dropdown). 3 acciones: actualizar margen+TP, actualizar NC, actualizar ESP |
 | **Log de Precios** UI | ✅ | Página con selector de acción (dropdown). 3 acciones: agregar precio, crear log, eliminar log |
 | **Orden de Compra** UI | ✅ | Página con selector de acción (dropdown). 1 acción: crear OC de servicio |
-| **Factura de Proveedores** UI | ✅ | Página dinámica con selector de acción. 3 acciones: crear factura, crear factura de combustible (ENAP), factura inter-empresa (Adquim→Adgreen) |
+| **Factura de Proveedores** UI | ✅ | Modelo de entrada distinto: ENAP/Esmax cargan por **XML múltiple** (`XmlUploadPanel`), inter-empresa es **form de rango de fechas + preview + confirmar** (`InterempresaPanel`). El selector de acción y el ruteo dinámico se reutilizan; el `inputKind` (en `OPERATION_EXTRAS`) decide qué panel se renderiza. |
 | **Nota de Venta** UI | ✅ | Página con selector de acción (dropdown). 3 acciones: quitar folio, cancelar boleta, cambio de libro |
 | **Entrega** UI | ✅ | Página con selector de acción (dropdown). 1 acción: crear desde folio |
 | Audit Log page | ✅ | `/audit` con tabla densa, filtros (acción/usuario/recurso/estado), expand row → diff antes/después |

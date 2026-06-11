@@ -4,7 +4,9 @@ import { useNavigate } from "react-router-dom"
 import { Label } from "@/components/atoms/Label"
 import { Button } from "@/components/ui/button"
 import { ActionHelp } from "@/components/uploads/ActionHelp"
+import { InterempresaPanel } from "@/components/uploads/InterempresaPanel"
 import { UploadPanel } from "@/components/uploads/UploadPanel"
+import { XmlUploadPanel } from "@/components/uploads/XmlUploadPanel"
 import type { MergedModule } from "@/lib/moduleRegistry"
 
 export function ModulePageTemplate({ module }: { module: MergedModule }) {
@@ -63,24 +65,37 @@ export function ModulePageTemplate({ module }: { module: MergedModule }) {
         )}
       </section>
 
-      {/* Ayuda — descripción + plantilla descargable + tabla de columnas */}
+      {/* Ayuda — descripción + (para Excel) plantilla y tabla de columnas */}
       <ActionHelp
         key={`help-${selected.key}`}
         help={selected.help}
         actionTitle={selected.title}
+        variant={selected.inputKind === "excel" ? "excel" : "other"}
       />
 
-      {/* Upload de la acción seleccionada */}
+      {/* Entrada de la acción seleccionada — según su modo */}
       <section>
-        <Label>subir archivo</Label>
+        <Label>{SECTION_LABEL[selected.inputKind]}</Label>
         <div className="mt-2">
-          <UploadPanel
-            key={selected.key}
-            apiPath={selected.apiPath}
-            schema={selected.schema}
-          />
+          {selected.inputKind === "xml" ? (
+            <XmlUploadPanel key={selected.key} apiPath={selected.apiPath} />
+          ) : selected.inputKind === "interempresa" ? (
+            <InterempresaPanel key={selected.key} />
+          ) : (
+            <UploadPanel
+              key={selected.key}
+              apiPath={selected.apiPath}
+              schema={selected.schema}
+            />
+          )}
         </div>
       </section>
     </div>
   )
+}
+
+const SECTION_LABEL: Record<string, string> = {
+  excel: "subir archivo",
+  xml: "subir XML",
+  interempresa: "rango de fechas",
 }

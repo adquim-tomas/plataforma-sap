@@ -15,13 +15,15 @@ function summaryKind(result: UploadResult): StatusKind {
 
 export function UploadSummary({ result }: UploadSummaryProps) {
   const kind = summaryKind(result)
+  const skipped = result.skipped_rows ?? 0
+  const hasSkipped = skipped > 0
 
   return (
     <section
-      className="
-        grid grid-cols-2 divide-y divide-border border border-border bg-elev
-        sm:grid-cols-4 sm:divide-x sm:divide-y-0
-      "
+      className={cn(
+        "grid grid-cols-2 divide-y divide-border border border-border bg-elev sm:divide-x sm:divide-y-0",
+        hasSkipped ? "sm:grid-cols-5" : "sm:grid-cols-4",
+      )}
     >
       <Cell label="filas">
         <span className="text-2xl font-bold tabular-nums">
@@ -38,6 +40,13 @@ export function UploadSummary({ result }: UploadSummaryProps) {
           {result.success_rows}
         </span>
       </Cell>
+      {hasSkipped && (
+        <Cell label="omitidas">
+          <span className="text-2xl font-bold tabular-nums text-warn">
+            {skipped}
+          </span>
+        </Cell>
+      )}
       <Cell label="errores">
         <span
           className={cn(
