@@ -10,7 +10,7 @@
 # restricción — el operador trabaja desde la empresa donde inició sesión.
 
 ADQUIM_DBS: tuple[str, ...] = ("CLPRDADQUIM", "CLTSTADQUIM")
-ADCLEAN_DBS: tuple[str, ...] = ("CLPRDADCLEAN", "CLTSTADCLEAN")
+ADCLEAN_DBS: tuple[str, ...] = ("CLPRD_ADCLEAN", "CLTST1ADCLEAN")
 ADGREEN_DBS: tuple[str, ...] = ("CLPRDADGREEN", "CLTSTADGREEN")
 
 ALL_COMPANY_DBS: tuple[str, ...] = ADQUIM_DBS + ADCLEAN_DBS + ADGREEN_DBS

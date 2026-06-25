@@ -1,8 +1,11 @@
+import asyncio
+import json
 import logging
 from datetime import date
 from typing import Any, Literal, Union, get_args, get_origin
 
 from fastapi import APIRouter, Depends, UploadFile
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -82,6 +85,12 @@ from app.modules.ventas.nota_venta.cambio_libro.router import (
 from app.modules.ventas.entrega.crear_desde_folio.router import (
     CrearDesdeFolioHandler,
 )
+from app.modules.articulos.datos_maestros.activar_desactivar.router import (
+    ActivarDesactivarArticuloHandler,
+)
+from app.modules.articulos.datos_maestros.cambiar_familia.router import (
+    CambiarFamiliaHandler,
+)
 
 router = APIRouter(prefix="/uploads", tags=["uploads"])
 logger = logging.getLogger(__name__)
@@ -111,6 +120,8 @@ HANDLERS = {
     "ventas/nota_venta/cancelar_boleta":                    CancelarBoletaHandler(),
     "ventas/nota_venta/cambio_libro":                       CambioLibroHandler(),
     "ventas/entrega/crear_desde_folio":                     CrearDesdeFolioHandler(),
+    "articulos/items/activar_desactivar":                   ActivarDesactivarArticuloHandler(),
+    "articulos/items/cambiar_familia":                      CambiarFamiliaHandler(),
 }
 
 
@@ -211,6 +222,116 @@ def _resolve_handler(module_path: str, company_db: str | None = None):
 def _ensure_excel(file: UploadFile) -> None:
     if not file.filename or not file.filename.endswith((".xlsx", ".xls")):
         raise InvalidFileError("Solo se aceptan archivos Excel (.xlsx, .xls).")
+
+
+def _sse_stream(queue: "asyncio.Queue[dict | None]", task: "asyncio.Task"):
+    """
+    Generador async que drena la queue y emite eventos SSE.
+    Envía un comentario keepalive cada 15 s para que proxies/LBs no
+    cierren la conexión por inactividad durante operaciones lentas en SAP.
+    """
+    async def _gen():
+        try:
+            while True:
+                try:
+                    event = await asyncio.wait_for(queue.get(), timeout=15.0)
+                except asyncio.TimeoutError:
+                    yield ": keepalive\n\n"
+                    continue
+                if event is None:
+                    break
+                yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
+        finally:
+            task.cancel()
+    return _gen()
+
+
+@router.post("/preview-stream/{module_path:path}")
+async def preview_stream(
+    module_path: str,
+    file: UploadFile,
+    user: TokenPayload = Depends(get_current_user),
+) -> StreamingResponse:
+    """
+    Igual que /preview pero con Server-Sent Events. El servidor emite
+    eventos de progreso en tiempo real mientras valida contra SAP, evitando
+    que la conexión quede "muerta" y sea cortada por proxies o el LB de Azure.
+    Sin timeout: la conexión se cierra sola al recibir el evento `result`.
+    """
+    handler = _resolve_handler(module_path, user.company_db)
+    _ensure_excel(file)
+    file_bytes = await file.read()
+    sap = await get_sap_client(user.company_db)
+
+    queue: asyncio.Queue[dict | None] = asyncio.Queue()
+
+    async def _run() -> None:
+        try:
+            result = await handler.validate_only(
+                file_bytes=file_bytes,
+                filename=file.filename or "",
+                sap=sap,
+                progress_cb=queue.put,
+            )
+            await queue.put({"type": "result", "data": result.model_dump()})
+        except Exception as e:
+            logger.exception("preview-stream error module=%s", module_path)
+            msg = str(e) or f"{type(e).__name__}"
+            await queue.put({"type": "error", "message": msg})
+        finally:
+            await queue.put(None)
+
+    task = asyncio.create_task(_run())
+    return StreamingResponse(
+        _sse_stream(queue, task),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+@router.post("/upload-stream/{module_path:path}")
+async def upload_stream(
+    module_path: str,
+    file: UploadFile,
+    user: TokenPayload = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> StreamingResponse:
+    """
+    Igual que /{module_path} pero con Server-Sent Events.
+    Emite progreso fila a fila durante la carga en SAP.
+    """
+    handler = _resolve_handler(module_path, user.company_db)
+    _ensure_excel(file)
+    file_bytes = await file.read()
+    sap = await get_sap_client(user.company_db)
+
+    queue: asyncio.Queue[dict | None] = asyncio.Queue()
+
+    async def _run() -> None:
+        try:
+            result = await handler.process(
+                file_bytes=file_bytes,
+                filename=file.filename or "",
+                username=user.sub,
+                company_db=user.company_db,
+                sap=sap,
+                db=db,
+                progress_cb=queue.put,
+            )
+            await queue.put({"type": "result", "data": result.model_dump()})
+        except Exception as e:
+            logger.exception("upload-stream error module=%s", module_path)
+            msg = str(e) or f"{type(e).__name__}"
+            await queue.put({"type": "error", "message": msg})
+        finally:
+            await queue.put(None)
+
+    task = asyncio.create_task(_run())
+    return StreamingResponse(
+        _sse_stream(queue, task),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 @router.post("/preview/{module_path:path}", response_model=PreviewResult)

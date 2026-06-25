@@ -54,6 +54,11 @@ El usuario sube un Excel; las filas válidas se insertan en SAP y las inválidas
 | 6 | Nota de Venta | ✅ |
 | 7 | Entrega | ✅ |
 
+### Artículos
+| # | Módulo | Estado |
+|---|--------|--------|
+| 8 | Datos Maestros Artículos | ✅ |
+
 ---
 
 ## Reglas de Negocio Clave

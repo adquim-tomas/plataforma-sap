@@ -54,6 +54,7 @@ export const CATEGORY_LABELS: Record<string, string> = {
   socios_negocio: "Socios de Negocios",
   compras: "Compras · Proveedores",
   ventas: "Ventas · Clientes",
+  articulos: "Artículos",
 }
 
 /** Módulos visibles en sidebar pero sin handler en HANDLERS todavía. */
@@ -101,6 +102,12 @@ export const MODULE_EXTRAS: Record<string, ModuleExtras> = {
     description: "Generación masiva de notas de entrega (guías de despacho) a partir de facturas existentes.",
     categoryLabel: "Ventas · Clientes",
     order: 7,
+  },
+  "articulos/items": {
+    title: "Datos Maestros",
+    description: "Acciones masivas sobre artículos que ya existen en SAP — activar o desactivar un artículo, y cambiar su familia o subfamilia.",
+    categoryLabel: "Artículos",
+    order: 8,
   },
 }
 
@@ -436,6 +443,40 @@ export const OPERATION_EXTRAS: Record<string, OperationExtras> = {
       "El cambio se aplica solo a la factura indicada.",
     ],
     templateFilename: "cambio_libro_template.xlsx",
+  },
+
+  "articulos/items/activar_desactivar": {
+    title: "Activar / Desactivar",
+    description: "Activa o desactiva en SAP un artículo que ya existe. Cambia los flags Valid y Frozen del artículo.",
+    columnHelp: {
+      ItemCode: { description: "Código del artículo en SAP.", example: "1511059225" },
+      Valid:    { description: "Flag de artículo activo. Valores admitidos: tYES o tNO. Si lo completas, el opuesto se aplica a Frozen automáticamente.", example: "tYES" },
+      Frozen:   { description: "Flag de artículo bloqueado. Valores admitidos: tYES o tNO. Si lo completas, el opuesto se aplica a Valid automáticamente.", example: "tNO" },
+    },
+    businessRules: [
+      "Completar exactamente UNA de las columnas Valid o Frozen — no ambas.",
+      "El ItemCode debe existir en SAP. Esta acción no crea artículos nuevos.",
+      "SAP exige los dos flags para que el cambio tome efecto; el opuesto al provisto se completa automáticamente.",
+    ],
+    templateFilename: "articulos_activar_desactivar_template.xlsx",
+  },
+
+  "articulos/items/cambiar_familia": {
+    title: "Cambiar familia",
+    description: "Cambia la familia (U_LMM_Familia) y/o la subfamilia (U_LMM_FAMDET) de uno o varios artículos. Se valida que la familia exista y que la subfamilia pertenezca a esa familia.",
+    columnHelp: {
+      ItemCode:      { description: "Código del artículo en SAP.", example: "1511059225" },
+      U_LMM_Familia: { description: "Nueva familia a asignar. Debe corresponder a una familia ya existente en SAP.", example: "ADBLUE" },
+      U_LMM_FAMDET:  { description: "Nueva subfamilia a asignar. Debe pertenecer a la familia indicada en U_LMM_Familia.", example: "ADBLUE" },
+    },
+    businessRules: [
+      "El ItemCode debe existir en SAP.",
+      "Completar al menos U_LMM_Familia o U_LMM_FAMDET — no se aceptan filas sin ninguno de los dos.",
+      "Si se completa U_LMM_FAMDET, se debe completar también U_LMM_Familia.",
+      "La familia debe existir en SAP (al menos un artículo con esa familia). Si la familia es nueva, asignarla primero manualmente a un artículo en SAP.",
+      "La subfamilia debe estar asociada a la familia indicada en al menos un artículo existente.",
+    ],
+    templateFilename: "articulos_cambiar_familia_template.xlsx",
   },
 
   "ventas/entrega/crear_desde_folio": {

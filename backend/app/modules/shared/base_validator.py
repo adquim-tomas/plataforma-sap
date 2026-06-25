@@ -196,6 +196,47 @@ class SAPValidator:
             return False
 
     @staticmethod
+    async def familia_exists(sap: SAPClient, familia: str) -> bool:
+        """
+        Verifica que la familia exista como valor asignado en al menos un artículo
+        (Items.U_LMM_Familia). Validación por uso — requiere que la familia esté
+        en uso antes de poder asignarse masivamente.
+        """
+        escaped = familia.replace("'", "''")
+        data = await sap.get(
+            "Items",
+            params={
+                "$filter": f"U_LMM_Familia eq '{escaped}'",
+                "$select": "ItemCode",
+                "$top": "1",
+            },
+        )
+        return bool(data.get("value", []))
+
+    @staticmethod
+    async def familia_det_belongs_to_familia(
+        sap: SAPClient, familia: str, familia_det: str
+    ) -> bool:
+        """
+        Verifica que la subfamilia (U_LMM_FAMDET) pertenezca a la familia
+        (U_LMM_Familia) consultando artículos que tengan esa combinación.
+        """
+        escaped_fam = familia.replace("'", "''")
+        escaped_det = familia_det.replace("'", "''")
+        data = await sap.get(
+            "Items",
+            params={
+                "$filter": (
+                    f"U_LMM_Familia eq '{escaped_fam}' and "
+                    f"U_LMM_FAMDET eq '{escaped_det}'"
+                ),
+                "$select": "ItemCode",
+                "$top": "1",
+            },
+        )
+        return bool(data.get("value", []))
+
+    @staticmethod
     async def nx_gcliente_line_exists(sap: SAPClient, code: str, line_id: int) -> bool:
         """
         Verifica que una línea (LineId) exista dentro de NX_DETCLIENTECollection

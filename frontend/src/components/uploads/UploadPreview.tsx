@@ -14,7 +14,7 @@ import type { PreviewResult } from "@/types"
 
 export type DryRunState =
   | { status: "idle" }
-  | { status: "running" }
+  | { status: "running"; progress?: import("@/lib/uploads").ProgressInfo }
   | { status: "done"; result: PreviewResult }
   | { status: "failed"; message: string }
 
@@ -226,14 +226,21 @@ export function UploadPreview({
         <div className="flex items-center gap-2 border border-border bg-elev px-3 py-2">
           <HeartbeatDot kind="pending" />
           <span className="text-[0.78rem] text-muted-foreground">
-            validando contra SAP…
+            {dryRun.progress?.phase === "fetch"
+              ? (dryRun.progress.message ?? "consultando datos en SAP…")
+              : dryRun.progress?.phase === "validate" &&
+                  dryRun.progress.current !== undefined
+                ? `validando fila ${dryRun.progress.current + 1} de ${dryRun.progress.total}…`
+                : "validando contra SAP…"}
           </span>
         </div>
       )}
       {dryRun.status === "failed" && (
         <div className="border border-fail/40 bg-elev px-3 py-2">
           <Label className="text-fail">validación contra SAP falló</Label>
-          <p className="mt-1 text-[0.78rem]">{dryRun.message}</p>
+          <p className="mt-1 text-[0.78rem]">
+            {dryRun.message || "error desconocido — revisa los logs del servidor"}
+          </p>
         </div>
       )}
       {dryRun.status === "done" && dryRun.result.errors.length > 0 && (

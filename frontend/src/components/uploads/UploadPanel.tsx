@@ -1,5 +1,4 @@
 import { useState } from "react"
-import { isAxiosError } from "axios"
 
 import { HeartbeatDot } from "@/components/atoms/HeartbeatDot"
 import { Label } from "@/components/atoms/Label"
@@ -18,7 +17,11 @@ import {
   type MissingRequiredRow,
 } from "@/lib/excel"
 import type { ModuleSchema } from "@/lib/modules"
-import { previewModule, uploadModule } from "@/lib/uploads"
+import {
+  previewModuleStream,
+  uploadModuleStream,
+  type ProgressInfo,
+} from "@/lib/uploads"
 import { useSapHealth } from "@/lib/useSapHealth"
 import type { UploadResult } from "@/types"
 
@@ -31,7 +34,7 @@ type Phase =
       missingRequired: MissingRequiredRow[]
       dryRun: DryRunState
     }
-  | { kind: "uploading"; filename: string }
+  | { kind: "uploading"; filename: string; progress: ProgressInfo | null }
   | { kind: "done"; result: UploadResult }
   | { kind: "failed"; message: string }
 
@@ -54,28 +57,25 @@ export function UploadPanel({ apiPath, schema }: UploadPanelProps) {
         : []
       const initialDryRun: DryRunState =
         missingRequired.length === 0 ? { status: "running" } : { status: "idle" }
-      setPhase({
-        kind: "picked",
-        file,
-        preview,
-        missingRequired,
-        dryRun: initialDryRun,
-      })
+      setPhase({ kind: "picked", file, preview, missingRequired, dryRun: initialDryRun })
 
       if (missingRequired.length === 0) {
         try {
-          const result = await previewModule(apiPath, file)
+          const result = await previewModuleStream(apiPath, file, (progress) => {
+            setPhase((prev) =>
+              prev.kind === "picked" && prev.file === file
+                ? { ...prev, dryRun: { status: "running", progress } }
+                : prev,
+            )
+          })
           setPhase((prev) =>
             prev.kind === "picked" && prev.file === file
               ? { ...prev, dryRun: { status: "done", result } }
               : prev,
           )
         } catch (err) {
-          const message = isAxiosError(err)
-            ? err.response?.data?.message ?? err.message
-            : err instanceof Error
-              ? err.message
-              : "Error desconocido."
+          const message =
+            err instanceof Error ? err.message : "Error desconocido."
           setPhase((prev) =>
             prev.kind === "picked" && prev.file === file
               ? { ...prev, dryRun: { status: "failed", message } }
@@ -91,9 +91,13 @@ export function UploadPanel({ apiPath, schema }: UploadPanelProps) {
   }
 
   const submit = async (file: File) => {
-    setPhase({ kind: "uploading", filename: file.name })
+    setPhase({ kind: "uploading", filename: file.name, progress: null })
     try {
-      const result = await uploadModule(apiPath, file)
+      const result = await uploadModuleStream(apiPath, file, (progress) => {
+        setPhase((prev) =>
+          prev.kind === "uploading" ? { ...prev, progress } : prev,
+        )
+      })
       // Si SAP rechazó por sesión caída, refrescar el heartbeat global.
       const sessionDown = result.errors.some(
         (e) =>
@@ -104,11 +108,8 @@ export function UploadPanel({ apiPath, schema }: UploadPanelProps) {
       if (sessionDown) refreshSapHealth()
       setPhase({ kind: "done", result })
     } catch (err) {
-      const message = isAxiosError(err)
-        ? err.response?.data?.message ?? err.message
-        : err instanceof Error
-          ? err.message
-          : "Error desconocido."
+      const message =
+        err instanceof Error ? err.message : "Error desconocido."
       setPhase({ kind: "failed", message })
     }
   }
@@ -131,11 +132,30 @@ export function UploadPanel({ apiPath, schema }: UploadPanelProps) {
       )}
 
       {phase.kind === "uploading" && (
-        <div className="flex h-32 flex-col items-center justify-center gap-2 border border-dashed border-border-strong bg-elev">
+        <div className="flex h-36 flex-col items-center justify-center gap-2 border border-dashed border-border-strong bg-elev">
           <div className="flex items-center gap-2">
             <HeartbeatDot kind="pending" />
-            <Label className="text-foreground">subiendo</Label>
+            <Label className="text-foreground">
+              {phase.progress?.phase === "fetch"
+                ? "consultando SAP"
+                : phase.progress?.phase === "apply" &&
+                    phase.progress.current !== undefined
+                  ? `aplicando ${phase.progress.current + 1} de ${phase.progress.total}`
+                  : "subiendo"}
+            </Label>
           </div>
+          {phase.progress?.phase === "apply" &&
+            phase.progress.current !== undefined &&
+            phase.progress.total !== undefined && (
+              <div className="h-px w-48 overflow-hidden bg-border-strong">
+                <div
+                  className="h-full bg-primary transition-[width] duration-300 ease-out"
+                  style={{
+                    width: `${Math.round(((phase.progress.current + 1) / phase.progress.total) * 100)}%`,
+                  }}
+                />
+              </div>
+            )}
           <span className="text-[0.74rem] text-muted-foreground">
             {phase.filename}
           </span>

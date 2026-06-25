@@ -217,29 +217,38 @@ class SAPClient:
             resource: entidad SAP (e.g. "BusinessPartners", "Items")
             filters:  string OData $filter (e.g. "CardType eq 'cCustomer'")
             select:   lista de campos a traer (e.g. ["CardCode", "CardName"])
+
+        Nota: los parámetros OData se construyen como string literal (no via
+        params= de httpx). httpx codifica '$' → '%24', SAP lo echa de vuelta
+        en el nextLink y la segunda página falla con "unknown url type".
         """
         await self._ensure_session()
 
-        params: dict[str, str] = {}
+        query_parts: list[str] = []
         if filters:
-            params["$filter"] = filters
+            query_parts.append(f"$filter={filters}")
         if select:
-            params["$select"] = ",".join(select)
+            query_parts.append(f"$select={','.join(select)}")
 
+        base = f"{self.BASE_URL}/{resource}"
+        url: str | None = f"{base}?{'&'.join(query_parts)}" if query_parts else base
         results: list[dict[str, Any]] = []
-        url: str | None = f"{self.BASE_URL}/{resource}"
 
         while url:
-            response = await self._http.get(
-                url,
-                headers=self._auth_headers(),
-                params=params if url == f"{self.BASE_URL}/{resource}" else None,
-            )
+            response = await self._http.get(url, headers=self._auth_headers())
             _raise_for_status(response)
             data = response.json()
 
             results.extend(data.get("value", []))
-            url = data.get("odata.nextLink")  # None si no hay más páginas
+
+            next_link: str | None = data.get("odata.nextLink")
+            if not next_link:
+                url = None
+            elif next_link.startswith("http"):
+                url = next_link
+            else:
+                # SAP devolvió un nextLink relativo — anteponemos la base.
+                url = f"{self.BASE_URL.rstrip('/')}/{next_link.lstrip('/')}"
 
         logger.debug(f"get_all({resource}) → {len(results)} records")
         return results

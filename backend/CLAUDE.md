@@ -146,6 +146,8 @@ Cada fila es un endpoint concreto. Solo se crean acciones que tienen respaldo co
 | Factura de Proveedores (PurchaseInvoices) | Combustible ENAP (XML) | `compras/factura_proveedor/crear_combustible_enap` | Sube N `.xml` DTE → parsea c/u → dedupe vs SAP → POST `PurchaseInvoices` multi-línea | `facturas_xml.py::xmlFolio` + `formatear.CreateJSON/createdocumentLines/create_line` |
 | Factura de Proveedores (PurchaseInvoices) | Combustible Esmax (XML) | `compras/factura_proveedor/crear_combustible_esmax` | Sube N `.xml` DTE → parsea c/u → dedupe vs SAP → POST `PurchaseInvoices` multi-línea | `facturas_esmax.py::xmlEsmax` + `formatearEsmax.CreateJSON/create_line` |
 | Factura de Proveedores (PurchaseInvoices) | Inter-empresa Adquim→Adgreen | `compras/factura_proveedor/interempresa` | Lee `Invoices` Adquim por rango de fechas → dedupe vs Adgreen → POST `PurchaseInvoices` Adgreen | `facturaInterEmpresa.py::adquimAdgreen.proceso_completo` + `buscar_folios_adquim_entre_fechas` + `extraer_info_json` |
+| Artículos (Items) | Activar / Desactivar | `articulos/datos_maestros/activar_desactivar` | PATCH `Items('{ItemCode}')` con `Valid` + `Frozen` | Mismo patrón que `update_SN_activo` en classsocio.py, aplicado a Items |
+| Artículos (Items) | Cambiar familia | `articulos/datos_maestros/cambiar_familia` | PATCH `Items('{ItemCode}')` con `U_LMM_Familia` y/o `U_LMM_FAMDET` | — |
 | Nota de Venta (Invoices) | Quitar folio | `ventas/nota_venta/quitar_folio` | PATCH `Invoices({DocEntry})` con `FolioPrefixString=null` + `FolioNumber=null` | `classInvoice.py::boletas.quitar_folio` + `multi_folio` |
 | Nota de Venta (Invoices) | Cancelar boleta | `ventas/nota_venta/cancelar_boleta` | POST `Invoices({DocEntry})/Cancel` | `classInvoice.py::boletas.cancel_boleta` + `multi_cancel` |
 | Nota de Venta (Invoices) | Cambio de libro | `ventas/nota_venta/cambio_libro` | PATCH `Invoices({DocEntry})` con `U_IX_Ind='NT'` | `classInvoice.py::boletas.cambio_libro` + `multi_libro` |
@@ -462,6 +464,8 @@ Los módulos UDO (Datos Maestros, Gestión de Clientes, Log de Precios) usan **P
 | **Factura de Proveedores — Combustible ENAP (XML)** | ✅ | Sube N `.xml`, dedupe vs SAP, POST `PurchaseInvoices` multi-línea (Pedro-grounded en `facturas_xml.py::xmlFolio` + `formatear`) |
 | **Factura de Proveedores — Combustible Esmax (XML)** | ✅ | Sube N `.xml`, dedupe vs SAP, POST `PurchaseInvoices` multi-línea (Pedro-grounded en `facturas_esmax.py::xmlEsmax` + `formatearEsmax`) |
 | **Factura de Proveedores — Inter-empresa** | ✅ | Lee `Invoices` Adquim por rango → dedupe vs Adgreen → POST `PurchaseInvoices` Adgreen, cross-company (Pedro-grounded en `facturaInterEmpresa.py::adquimAdgreen`) |
+| **Artículos — Activar / Desactivar** | ✅ | PATCH `Items('{ItemCode}')` con `Valid`+`Frozen`; sin pre-fetch (ItemCode validado por SAP al PATCH) |
+| **Artículos — Cambiar familia** | ✅ | PATCH `Items('{ItemCode}')` con `U_LMM_Familia`+`U_LMM_FAMDET`; familia/subfamilia validadas contra el catálogo UDT `U_LMM_FAM_META` (Name=familia, "Familia Meta"=subfamilia); ItemCode lo valida SAP en el PATCH |
 | XmlUploadHandler + `login_company_client` + `purchase_invoice_exists` | ✅ | Infra compartida para carga por XML y cross-company |
 
 ---

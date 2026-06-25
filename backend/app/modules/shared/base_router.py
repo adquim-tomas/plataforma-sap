@@ -1,6 +1,7 @@
 import logging
 import math
 from abc import ABC, abstractmethod
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 import io
 from typing import Any, Generic, TypeVar
@@ -23,6 +24,10 @@ from app.modules.shared.base_schema import (
 logger = logging.getLogger(__name__)
 
 SchemaT = TypeVar("SchemaT", bound=BaseModel)
+
+# Callback opcional para emitir eventos de progreso hacia SSE.
+# Recibe un dict JSON-serializable; el llamador decide cómo transmitirlo.
+ProgressCallback = Callable[[dict], Awaitable[None]] | None
 
 
 # Centinela que el operador escribe en una celda para vaciar el campo en SAP.
@@ -135,6 +140,16 @@ class BaseUploadHandler(ABC, Generic[SchemaT]):
             raise RowValidationError(message, code="business_validation", field=field)
         await self.apply_sap(sap, row)
 
+    async def pre_validate_batch(self, sap: SAPClient) -> None:
+        """
+        Hook opcional que se ejecuta UNA vez antes del loop de filas, tanto en
+        `process()` como en `validate_only()`. Sirve para pre-cargar datos de SAP
+        en el handler (p. ej. conjuntos de valores válidos) y evitar N llamadas
+        idénticas durante la validación fila a fila.
+
+        El default es no-op. Los handlers que necesiten pre-carga lo sobreescriben.
+        """
+
     async def validate(self, sap: SAPClient, row: SchemaT) -> list[BusinessError]:
         """
         Validaciones de negocio (consultas SAP) sin ejecutar la operación.
@@ -186,7 +201,12 @@ class BaseUploadHandler(ABC, Generic[SchemaT]):
         company_db: str,
         sap: SAPClient,
         db: Session,
+        progress_cb: ProgressCallback = None,
     ) -> UploadResult:
+        async def _emit(data: dict) -> None:
+            if progress_cb:
+                await progress_cb(data)
+
         try:
             df = self._parse_excel(file_bytes)
         except Exception as e:
@@ -197,7 +217,12 @@ class BaseUploadHandler(ABC, Generic[SchemaT]):
         audits: list[_AuditCapture] = []
         success_count = 0
 
+        await _emit({"type": "progress", "phase": "fetch", "message": "Consultando datos en SAP…"})
+        await self.pre_validate_batch(sap)
+        await _emit({"type": "progress", "phase": "apply", "current": 0, "total": total_rows})
+
         for idx, raw_row in df.iterrows():
+            await _emit({"type": "progress", "phase": "apply", "current": int(idx), "total": total_rows})
             row_number = int(idx) + 2  # +2: Excel empieza en 1 y hay header
 
             validated = self._validate_row(raw_row.to_dict(), row_number, errors)
@@ -265,13 +290,21 @@ class BaseUploadHandler(ABC, Generic[SchemaT]):
         file_bytes: bytes,
         filename: str,
         sap: SAPClient,
+        progress_cb: ProgressCallback = None,
     ) -> PreviewResult:
         """
         Dry-run: parsea el Excel, valida fila por fila (Pydantic + validate
         de negocio contra SAP) y devuelve los errores. NO escribe en SAP ni
         crea registros en BD. Usado por el endpoint /preview para que el
         operador vea errores antes de comprometer la carga.
+
+        `progress_cb` es invocado con eventos de progreso JSON-serializable
+        para el endpoint SSE. Si es None (endpoint clásico) se omite.
         """
+        async def _emit(data: dict) -> None:
+            if progress_cb:
+                await progress_cb(data)
+
         try:
             df = self._parse_excel(file_bytes)
         except Exception as e:
@@ -281,8 +314,13 @@ class BaseUploadHandler(ABC, Generic[SchemaT]):
         errors: list[RowError] = []
         valid_rows = 0
 
+        await _emit({"type": "progress", "phase": "fetch", "message": "Consultando datos en SAP…"})
+        await self.pre_validate_batch(sap)
+        await _emit({"type": "progress", "phase": "validate", "current": 0, "total": total_rows})
+
         for idx, raw_row in df.iterrows():
             row_number = int(idx) + 2
+            await _emit({"type": "progress", "phase": "validate", "current": int(idx), "total": total_rows})
 
             validated = self._validate_row(raw_row.to_dict(), row_number, errors)
             if validated is None:

@@ -1,7 +1,7 @@
 // Tipos compartidos del sistema de módulos.
 // La lógica de registro y descubrimiento vive en moduleRegistry.tsx.
 
-export type ModuleCategory = "socios_negocio" | "compras" | "ventas"
+export type ModuleCategory = "socios_negocio" | "compras" | "ventas" | "articulos"
 
 export interface ModuleSchema {
   /** Columnas obligatorias en el header del Excel */

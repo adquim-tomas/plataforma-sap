@@ -161,6 +161,7 @@ Para módulos no implementados (`implemented: false`), `actions` es `undefined` 
 | V | `factura-proveedor` | `crear-combustible-enap` (XML), `crear-combustible-esmax` (XML), `interempresa` (form) | ✅ |
 | VI | `nota-venta` | `quitar-folio`, `cancelar-boleta`, `cambio-libro` | ✅ |
 | VII | `entrega` | `crear-desde-folio` | ✅ |
+| VIII | `articulos` | `activar-desactivar`, `cambiar-familia` | ✅ |
 
 ---
 
@@ -232,6 +233,7 @@ en la UI); solo el destino Adgreen (TST o PRD) es seleccionable. El
 | **Factura de Proveedores** UI | ✅ | Modelo de entrada distinto: ENAP/Esmax cargan por **XML múltiple** (`XmlUploadPanel`), inter-empresa es **form de rango de fechas + preview + confirmar** (`InterempresaPanel`). El selector de acción y el ruteo dinámico se reutilizan; el `inputKind` (en `OPERATION_EXTRAS`) decide qué panel se renderiza. |
 | **Nota de Venta** UI | ✅ | Página con selector de acción (dropdown). 3 acciones: quitar folio, cancelar boleta, cambio de libro |
 | **Entrega** UI | ✅ | Página con selector de acción (dropdown). 1 acción: crear desde folio |
+| **Artículos** UI | ✅ | Página con selector de acción (dropdown). 2 acciones: activar/desactivar, cambiar familia |
 | Audit Log page | ✅ | `/audit` con tabla densa, filtros (acción/usuario/recurso/estado), expand row → diff antes/después |
 
 ---

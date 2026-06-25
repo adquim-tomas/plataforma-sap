@@ -9,7 +9,7 @@ import { useModuleRegistry, type SidebarModule } from "@/lib/moduleRegistry"
 import { cn } from "@/lib/utils"
 
 const COLLAPSED_CATEGORIES_STORAGE_KEY = "pedropedia.sidebar.collapsed-categories"
-const CATEGORY_ORDER = ["socios_negocio", "compras", "ventas"]
+const CATEGORY_ORDER = ["socios_negocio", "compras", "ventas", "articulos"]
 
 function readCollapsedCategories(): string[] {
   if (typeof window === "undefined") return []
