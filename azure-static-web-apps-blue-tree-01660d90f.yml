@@ -1,3 +1,6 @@
+# Pipeline de build + deploy del frontend (Vite/React) a Azure Static Web Apps.
+# Requiere el variable group "swa-secrets" con AZURE_STATIC_WEB_APPS_API_TOKEN.
+
 trigger:
   branches:
     include:
@@ -10,7 +13,7 @@ pool:
   vmImage: ubuntu-latest
 
 variables:
-  - group: Azure-Static-Web-Apps-blue-tree-01660d90f-variable-group
+  - group: azure-static-web-apps-blue-tree-01660d90f-variable-group
 
 steps:
   - task: UseNode@1
@@ -29,12 +32,14 @@ steps:
       bun run build
     displayName: 'Build de producción (tsc + vite build)'
     env:
+      # Vite inyecta esto en build-time dentro del bundle — debe apuntar al
+      # backend real en App Service, no a localhost.
       VITE_API_URL: 'https://app-plataforma-sap-api.azurewebsites.net'
 
   - task: AzureStaticWebApp@0
     inputs:
-      app_location: 'frontend'
-      output_location: 'dist'
+      app_location: 'frontend/dist'
+      output_location: ''
       skip_app_build: true
-      azure_static_web_apps_api_token: '$(AZURE_STATIC_WEB_APPS_API_TOKEN)'
+      azure_static_web_apps_api_token: '$(AZURE_STATIC_WEB_APPS_API_TOKEN_BLUE_TREE_01660D90F)'
     displayName: 'Deploy a Azure Static Web Apps'
