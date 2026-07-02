@@ -36,15 +36,9 @@ steps:
       # backend real en App Service, no a localhost.
       VITE_API_URL: 'https://app-plataforma-sap-api.azurewebsites.net'
 
-  - script: |
-      rm -rf $(Build.ArtifactStagingDirectory)/swa-dist
-      mkdir -p $(Build.ArtifactStagingDirectory)/swa-dist
-      cp -r frontend/dist/* $(Build.ArtifactStagingDirectory)/swa-dist/
-    displayName: 'Copiar dist a carpeta aislada (evita que la tarea suba node_modules)'
-
   - task: AzureStaticWebApp@0
     inputs:
-      app_location: '$(Build.ArtifactStagingDirectory)/swa-dist'
+      app_location: '$(Build.ArtifactStagingDirectory)/dist'
       output_location: ''
       skip_app_build: true
       azure_static_web_apps_api_token: '$(AZURE_STATIC_WEB_APPS_API_TOKEN_BLUE_TREE_01660D90F)'
