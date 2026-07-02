@@ -84,6 +84,11 @@ class SAPClient:
     PAGE_SIZE = 200                    # máximo que acepta el server
     SESSION_MARGIN = timedelta(minutes=2)
 
+    @property
+    def company_db(self) -> str | None:
+        """CompanyDB contra la que está autenticado este cliente (o None)."""
+        return self._credentials.get("CompanyDB")
+
     def __init__(self) -> None:
         self._session: _SAPSession | None = None
         self._credentials: dict[str, str] = {}

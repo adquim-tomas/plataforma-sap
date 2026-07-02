@@ -9,14 +9,23 @@ from app.modules.articulos.datos_maestros.cambiar_familia.schema import (
 )
 from app.modules.articulos.datos_maestros.cambiar_familia.validator import (
     CambiarFamiliaValidator,
+    FamiliaCatalog,
 )
+
+# Catálogo de familias cacheado POR CompanyDB. El handler es un singleton
+# compartido por todas las requests/empresas; guardar el catálogo en `self`
+# permitiría que un operador de otra empresa lo pisara (validar contra la base
+# equivocada). Keyear por company_db aísla cada empresa. Se refresca en cada
+# batch (`pre_validate_batch`), así una familia recién creada se reconoce ya.
+_CATALOGS: dict[str, FamiliaCatalog] = {}
+_EMPTY_CATALOG = FamiliaCatalog({}, {})
 
 
 class CambiarFamiliaHandler(BaseUploadHandler[CambiarFamiliaRow]):
     """
-    pre_validate_batch: lee UNA vez el catálogo de familias (UDT
-    U_LMM_FAM_META) y construye los sets de familias y combinaciones
-    familia→subfamilia válidas. La validación por fila los consulta en memoria.
+    pre_validate_batch: lee UNA vez por batch el catálogo de familias (UDT
+    U_LMM_FAM_META) de la CompanyDB del operador y lo cachea por empresa. La
+    validación por fila lo consulta en memoria.
 
     La familia/subfamilia se valida contra el catálogo real (no contra los
     artículos que ya las usan), así una familia recién creada se reconoce de
@@ -27,10 +36,6 @@ class CambiarFamiliaHandler(BaseUploadHandler[CambiarFamiliaRow]):
     como error de fila); no se pre-carga la tabla Items completa.
     """
 
-    def __init__(self) -> None:
-        self._valid_familias: set[str] = set()
-        self._valid_combos: set[tuple[str, str]] = set()
-
     @property
     def schema_class(self) -> type[CambiarFamiliaRow]:
         return CambiarFamiliaRow
@@ -39,19 +44,35 @@ class CambiarFamiliaHandler(BaseUploadHandler[CambiarFamiliaRow]):
     def sap_module(self) -> str:
         return "articulos/items/cambiar_familia"
 
+    @staticmethod
+    def _catalog_for(sap: SAPClient) -> FamiliaCatalog:
+        return _CATALOGS.get(sap.company_db or "", _EMPTY_CATALOG)
+
     async def pre_validate_batch(self, sap: SAPClient) -> None:
-        self._valid_familias, self._valid_combos = (
+        # Asignación a la clave de la empresa: atómica en el event loop, sin
+        # await intermedio → sin condición de carrera entre empresas.
+        _CATALOGS[sap.company_db or ""] = (
             await CambiarFamiliaValidator.fetch_catalog(sap)
         )
 
     async def validate(
         self, sap: SAPClient, row: CambiarFamiliaRow
     ) -> list[BusinessError]:
-        return CambiarFamiliaValidator.validate(
-            row, self._valid_familias, self._valid_combos
-        )
+        return CambiarFamiliaValidator.validate(row, self._catalog_for(sap))
 
     async def apply_sap(self, sap: SAPClient, row: CambiarFamiliaRow) -> None:
+        # Escribir el valor canónico del catálogo (no el casing crudo del Excel)
+        # para no introducir variantes de mayúsculas en el UDF del artículo.
+        catalog = self._catalog_for(sap)
+        if catalog.loaded:
+            canon_fam = catalog.canon_familia(row.U_LMM_Familia)
+            if canon_fam is not None:
+                row.U_LMM_Familia = canon_fam
+            canon_sub = catalog.canon_subfamilia(
+                row.U_LMM_Familia, row.U_LMM_FAMDET
+            )
+            if canon_sub is not None:
+                row.U_LMM_FAMDET = canon_sub
         await CambiarFamiliaSAPService.update(sap, row)
 
     def audit_resource_id(self, row: CambiarFamiliaRow) -> str:

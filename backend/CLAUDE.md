@@ -465,7 +465,7 @@ Los módulos UDO (Datos Maestros, Gestión de Clientes, Log de Precios) usan **P
 | **Factura de Proveedores — Combustible Esmax (XML)** | ✅ | Sube N `.xml`, dedupe vs SAP, POST `PurchaseInvoices` multi-línea (Pedro-grounded en `facturas_esmax.py::xmlEsmax` + `formatearEsmax`) |
 | **Factura de Proveedores — Inter-empresa** | ✅ | Lee `Invoices` Adquim por rango → dedupe vs Adgreen → POST `PurchaseInvoices` Adgreen, cross-company (Pedro-grounded en `facturaInterEmpresa.py::adquimAdgreen`) |
 | **Artículos — Activar / Desactivar** | ✅ | PATCH `Items('{ItemCode}')` con `Valid`+`Frozen`; sin pre-fetch (ItemCode validado por SAP al PATCH) |
-| **Artículos — Cambiar familia** | ✅ | PATCH `Items('{ItemCode}')` con `U_LMM_Familia`+`U_LMM_FAMDET`; familia/subfamilia validadas contra el catálogo UDT `U_LMM_FAM_META` (Name=familia, "Familia Meta"=subfamilia); ItemCode lo valida SAP en el PATCH |
+| **Artículos — Cambiar familia** | ✅ | PATCH `Items('{ItemCode}')` con `U_LMM_Familia`+`U_LMM_FAMDET`; familia/subfamilia validadas contra el catálogo UDT `U_LMM_FAM_META` (`Name`=familia → `U_LMM_Familia`; `U_LMM_FM` "Familia Meta"=subfamilia → `U_LMM_FAMDET`; combo válido = par `(Name, U_LMM_FM)`); ItemCode lo valida SAP en el PATCH |
 | XmlUploadHandler + `login_company_client` + `purchase_invoice_exists` | ✅ | Infra compartida para carga por XML y cross-company |
 
 ---

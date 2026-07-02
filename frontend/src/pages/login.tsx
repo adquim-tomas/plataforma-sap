@@ -11,13 +11,17 @@ import { useSapHealth } from "@/lib/useSapHealth"
 // Lista de CompanyDBs por empresa. La acción que ve cada operador depende de
 // la CompanyDB que elija acá (ENAP/Esmax/Inter-empresa son Adquim-only — ver
 // `allowed_company_dbs` en backend/app/modules/compras/factura_proveedor/_company_dbs.py).
+// Los nombres de CompanyDB deben coincidir EXACTAMENTE con los de SAP — la
+// fuente de verdad es backend/app/modules/compras/factura_proveedor/_company_dbs.py.
+// Adclean usa nombres irregulares (guion bajo en PRD, "1" en TST); si no
+// coinciden, SAP rechaza el login con "invalid credentials".
 const COMPANY_DBS = [
-  { value: "CLPRDADQUIM",  label: "Adquim · producción"  },
-  { value: "CLTSTADQUIM",  label: "Adquim · test"        },
-  { value: "CLPRDADCLEAN", label: "Adclean · producción" },
-  { value: "CLTSTADCLEAN", label: "Adclean · test"       },
-  { value: "CLPRDADGREEN", label: "Adgreen · producción" },
-  { value: "CLTSTADGREEN", label: "Adgreen · test"       },
+  { value: "CLPRDADQUIM",   label: "Adquim · producción"  },
+  { value: "CLTSTADQUIM",   label: "Adquim · test"        },
+  { value: "CLPRD_ADCLEAN", label: "Adclean · producción" },
+  { value: "CLTST1ADCLEAN", label: "Adclean · test"       },
+  { value: "CLPRDADGREEN",  label: "Adgreen · producción" },
+  { value: "CLTSTADGREEN",  label: "Adgreen · test"       },
 ]
 
 interface LocationState {
