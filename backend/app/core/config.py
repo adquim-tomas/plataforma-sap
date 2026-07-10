@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     JWT_EXPIRE_MINUTES: int
 
     # CORS — orígenes permitidos separados por coma (ej. "https://app.adquim.com,http://localhost:5173")
-    ALLOWED_ORIGINS: str = "http://localhost:5173"
+    ALLOWED_ORIGINS: str = "http://localhost:5173,https://blue-tree-01660d90f.7.azurestaticapps.net"
 
     # Rate limiting — máximo de requests por IP en ventana de 60s. 0 desactiva.
     RATE_LIMIT_PER_MINUTE: int = 120
