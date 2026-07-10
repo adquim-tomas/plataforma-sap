@@ -1,29 +1,28 @@
 from pydantic import ConfigDict, Field, field_validator
 
-from app.modules.shared.base_schema import CLEAR_SENTINEL, RowBase
+from app.modules.shared.base_schema import RowBase
 
 # ── Acción: Cambio de Industria ───────────────────────────────────────────────
 #
 # PATCH sobre BusinessPartners para asignar el campo `Industry` (código entero
 # que referencia el catálogo de industrias de SAP — tabla OIND).
 #
-# NOTA DE SCOPE: esta es la primera acción SIN respaldo en el legacy de Pedro
-# (Conexion_Service_Layer_SAP/). Excepción aprobada explícitamente — solicitud
-# directa de Pedro sin script previo. Ver backend/CLAUDE.md.
+# NOTA DE SCOPE: primera acción SIN respaldo en el legacy de Pedro
+# (Conexion_Service_Layer_SAP/). Excepción aprobada explícitamente.
 #
-# Solo asignación: NO se admite CLEAR_SENTINEL para desasignar la industria.
+# Solo asignación. El pipeline (base_router._validate_row) convierte una celda
+# con <VACIO> en None ANTES de Pydantic — por eso el validator trata None como
+# intento de desasignar y lo rechaza. Una celda vacía ni llega: la clave se
+# omite y Pydantic responde "Field required".
 
 
 class CambioIndustriaRow(RowBase):
     """
-    Fila del Excel para Cambio de Industria.
-
     Columnas aceptadas — y SOLO estas:
-      - CardCode  (obligatorio) — CN{RUT} clientes, PN{RUT} proveedores
+      - CardCode  (obligatorio)
       - Industry  (obligatorio) — código entero del catálogo de industrias
-      - CardName  (opcional)    — puramente informativa, se ignora; se acepta
-                                  porque los archivos del negocio suelen traer
-                                  el nombre del socio como referencia visual
+      - CardName  (opcional)    — informativa, se ignora; los archivos del
+                                  negocio traen el nombre como referencia
     """
     model_config = ConfigDict(
         extra="forbid",
@@ -39,14 +38,13 @@ class CambioIndustriaRow(RowBase):
     @classmethod
     def parse_industry(cls, v):
         if v is None:
-            raise ValueError("Falta el código de industria.")
+            # None acá = el operador escribió <VACIO> (ver nota arriba).
+            raise ValueError(
+                "Esta acción solo asigna industria — no se admite '<VACIO>' "
+                "para quitarla."
+            )
         if isinstance(v, str):
             s = v.strip()
-            if s.upper() == CLEAR_SENTINEL.upper():
-                raise ValueError(
-                    "Esta acción solo asigna industria — no se admite "
-                    f"'{CLEAR_SENTINEL}' para desasignar."
-                )
             # pandas con dtype=str puede entregar celdas numéricas como "7.0"
             if s.endswith(".0"):
                 s = s[:-2]

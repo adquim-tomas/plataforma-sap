@@ -300,7 +300,7 @@ Estas convenciones son **compartidas entre frontend y backend** y deben respetar
 | `<VACIO>` (cualquier capitalización) | El campo se envía como `null` — SAP **vacía** el valor |
 | Cualquier otro valor | El campo se actualiza al valor indicado             |
 
-La constante `CLEAR_SENTINEL = "<VACIO>"` está definida en `backend/app/modules/shared/base_schema.py` y en `frontend/src/lib/excel.ts`.
+La constante `CLEAR_SENTINEL = "<VACIO>"` está definida en `backend/app/modules/shared/base_router.py` y en `frontend/src/lib/excel.ts`.
 
 ### Inserciones parciales
 
