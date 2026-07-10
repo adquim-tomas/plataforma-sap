@@ -53,6 +53,9 @@ from app.modules.socios_negocio.log_precios.crear_log.router import (
 from app.modules.socios_negocio.log_precios.eliminar_log.router import (
     EliminarLogHandler,
 )
+from app.modules.socios_negocio.datos_maestros.cambio_industria.router import (
+    CambioIndustriaHandler,
+)
 from app.modules.compras.orden_compra.crear_servicio.router import (
     CrearServicioHandler,
 )
@@ -105,6 +108,7 @@ HANDLERS = {
     "socios_negocio/datos_maestros/cambio_subgerente":      CambioSubgerenteHandler(),
     "socios_negocio/datos_maestros/cambio_cond_pago":       CambioCondPagoHandler(),
     "socios_negocio/datos_maestros/cambio_region_cpago":    CambioRegionCpagoHandler(),
+    "socios_negocio/datos_maestros/cambio_industria":       CambioIndustriaHandler(),
     "socios_negocio/datos_maestros/bloqueo_cofase":         BloqueoCofaseHandler(),
     "socios_negocio/gestion_clientes/actualizar_margen_tp": ActualizarMargenTPHandler(),
     "socios_negocio/gestion_clientes/actualizar_nc":        ActualizarNcHandler(),

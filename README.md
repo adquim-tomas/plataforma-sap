@@ -252,6 +252,7 @@ Cada acción corresponde a un endpoint independiente con su propio conjunto de c
 | Datos Maestros     | Cambio de Cartera       | `socios_negocio/datos_maestros/cambio_cartera`                   | PATCH `BPAddresses[RowNum]` campo Zonal    |
 | Datos Maestros     | Cambio de Subgerente    | `socios_negocio/datos_maestros/cambio_subgerente`                | PATCH `BPAddresses[RowNum]` campo Subger.  |
 | Datos Maestros     | Cambio Cond. de Pago    | `socios_negocio/datos_maestros/cambio_cond_pago`                 | PATCH `BPAddresses[RowNum]` payment terms  |
+| Datos Maestros     | Cambio de Industria     | `socios_negocio/datos_maestros/cambio_industria`                 | PATCH `BusinessPartners` (Industry)        |
 | Datos Maestros     | Cambio Región + C. Pago | `socios_negocio/datos_maestros/cambio_region_cpago`              | PATCH `BPAddresses[RowNum]` región + pago  |
 | Datos Maestros     | Bloqueo Cofase          | `socios_negocio/datos_maestros/bloqueo_cofase`                   | PATCH masivo: freeze + crédito 0 + nota    |
 | Gestión Clientes   | Actualizar Margen + TP  | `socios_negocio/gestion_clientes/actualizar_margen_tp`           | PATCH línea NX_GCLIENTE: margen + tipo     |

@@ -203,6 +203,23 @@ export const OPERATION_EXTRAS: Record<string, OperationExtras> = {
     templateFilename: "cambio_region_cpago_template.xlsx",
   },
 
+  "socios_negocio/datos_maestros/cambio_industria": {
+    title: "Cambio de industria",
+    description: "Asigna la industria (rubro) de un socio de negocio que ya existe en SAP. Cambia el campo Industry del socio según el catálogo de industrias.",
+    columnHelp: {
+      CardCode: { description: "Identificador SAP del socio. CN+RUT para clientes, PN+RUT para proveedores.", example: "CN76137566-0" },
+      Industry: { description: "Código numérico de la industria según el catálogo de SAP.", example: "7" },
+      CardName: { description: "Nombre del socio — solo referencia visual, se ignora. El nombre no se modifica en SAP.", example: "CONSTRUCTORA ITINEX LIMITADA" },
+    },
+    businessRules: [
+      "El CardCode debe existir en SAP. Esta acción no crea socios nuevos.",
+      "Industry debe ser un código existente en el catálogo de industrias de SAP — se verifica antes de aplicar el cambio.",
+      "Solo asigna: no se admite <VACIO> para quitar la industria de un socio.",
+      "CardName es opcional y puramente informativa — puedes dejarla en tu Excel como referencia, pero el nombre del socio no se toca.",
+    ],
+    templateFilename: "cambio_industria_template.xlsx",
+  },
+
   "socios_negocio/datos_maestros/bloqueo_cofase": {
     title: "Bloqueo COFASE",
     description: "Bloquea masivamente socios de negocio por retiro de cobertura COFASE. Desactiva el socio, lo congela, fuerza el tipo de línea a 'Sin línea', pone los límites de crédito en 0, y deja una constancia con la fecha de hoy en el comentario libre del SN.",

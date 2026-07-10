@@ -128,12 +128,18 @@ Todos los módulos del roadmap están implementados. El último (Factura de Prov
 
 Cada fila es un endpoint concreto. Solo se crean acciones que tienen respaldo concreto en el repo de referencia [`Conexion_Service_Layer_SAP/`](../../Conexion_Service_Layer_SAP/) (la base de Pedro). El resto de funcionalidad SAP queda fuera del scope hasta que se identifique la acción Pedro-grounded correspondiente.
 
+**Excepción documentada:** `cambio_industria` (2026-07) es la primera acción sin
+script legacy de respaldo — solicitud directa de Pedro sin código previo. La
+regla de scope sigue vigente para el resto: toda nueva excepción debe aprobarse
+explícitamente y registrarse aquí.
+
 | Módulo SAP | Acción | Endpoint | Operación SAP | Origen |
 |------------|--------|----------|---------------|--------|
 | Datos Maestros (BusinessPartners) | Activar / Desactivar | `socios_negocio/datos_maestros/activar_desactivar` | PATCH `BusinessPartners('{CardCode}')` con `Valid` + `Frozen` | `Conexion_Service_Layer_SAP/clases/classsocio.py::SN.update_SN_activo` |
 | Datos Maestros (BusinessPartners) | Cambio de cartera | `socios_negocio/datos_maestros/cambio_cartera` | PATCH `BPAddresses[{RowNum}].U_LMM_ZN_Encargado` | `classsocio.py::SN.update_zonal_sucursal` + `update_many_zonal_sucursal` |
 | Datos Maestros (BusinessPartners) | Cambio de subgerente | `socios_negocio/datos_maestros/cambio_subgerente` | PATCH `BPAddresses[{RowNum}].U_LMM_ZN_SG` | `classsocio.py::SN.update_subgerente_sucursal` + `update_many_SG_sucursal` |
 | Datos Maestros (BusinessPartners) | Cambio de condición de pago | `socios_negocio/datos_maestros/cambio_cond_pago` | PATCH `BPAddresses[{RowNum}].U_LMM_CondPago` + `U_LMM_DescPago` | `classsocio.py::SN.updateCodPago` + `update_many_cod_pago` |
+| Datos Maestros (BusinessPartners) | Cambio de industria | `socios_negocio/datos_maestros/cambio_industria` | PATCH `BusinessPartners('{CardCode}')` con `Industry` | **— sin respaldo legacy** (excepción de scope — ver nota) |
 | Datos Maestros (BusinessPartners) | Cambio de región y cpago | `socios_negocio/datos_maestros/cambio_region_cpago` | PATCH `BPAddresses[{RowNum}].State` + `U_LMM_CondPago` + `U_LMM_DescPago` | `classsocio.py::SN.update_zonal_region_cpago` + `update_many_region` |
 | Datos Maestros (BusinessPartners) | Bloqueo COFASE | `socios_negocio/datos_maestros/bloqueo_cofase` | PATCH masivo con `Valid=tNO`+`Frozen=tYES`+`U_tipo_linea`+`CreditLimit=0`+`MaxCommitment=0`+`FreeText` apendado | `classsocio.py::SN.bloqueo_masivo_COFASE` + `update_many_bloqueo_cofase` |
 | Gestión de Clientes (NX_GCLIENTE) | Actualizar margen + TP precio | `socios_negocio/gestion_clientes/actualizar_margen_tp` | PATCH línea con `U_NX_Margen` + `U_LMM_ESP` | `classmargen.py::MargenChange.updateMargenadquimTPprecio_margen` |
@@ -192,6 +198,26 @@ Las acciones que modifican una dirección puntual de `BPAddresses` (`cambio_cart
 - Campos específicos: `State` (int), `CondPago` (int), `DescPago` (str).
 - PATCH: `State`, `U_LMM_CondPago`, `U_LMM_DescPago`.
 - Sin validador adicional sobre los códigos.
+
+#### Datos Maestros — Cambio de industria
+
+- Campos: `CardCode`, `Industry` (código entero del catálogo OIND),
+  `CardName` (opcional — puramente informativa, NUNCA se envía a SAP; se
+  acepta porque los archivos del negocio traen el nombre como referencia).
+- PATCH: `BusinessPartners('{CardCode}')` con `{"Industry": código}`. Campo
+  de cabecera del BP — no toca `BPAddresses`.
+- Validador SAP: `card_code_exists` + `industry_code_exists` (nuevo helper en
+  `base_validator.py` — GET filtrado a la entidad `Industries` del Service
+  Layer; propiedades: `IndustryCode` (int), `IndustryName`,
+  `IndustryDescription`).
+- Solo asignación: `<VACIO>` se rechaza con mensaje explícito en el schema.
+  El schema exige `Industry > 0`, lo que además excluye el `-1` ("NO
+  DEFINIDO") del catálogo — asignar -1 sería desasignar por la puerta trasera.
+- El pre-validator normaliza celdas numéricas que pandas entrega como `"7.0"`
+  (efecto de `dtype=str`).
+- Auditoría: `fetch_before` captura el `Industry` previo; `build_after` el
+  enviado.
+- Pedro: **no existe** — excepción de scope aprobada (ver nota arriba).
 
 #### Datos Maestros — Bloqueo COFASE
 

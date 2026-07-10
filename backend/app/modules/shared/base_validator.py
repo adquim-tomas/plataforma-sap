@@ -262,3 +262,20 @@ class SAPValidator:
             except (TypeError, ValueError):
                 continue
         return False
+    
+    @staticmethod
+    async def industry_code_exists(sap: SAPClient, industry_code: int) -> bool:
+        """
+        Verifica que el código exista en el catálogo de industrias (entidad
+        `Industries` del Service Layer — tabla OIND). Propiedades del catálogo:
+        IndustryCode (int), IndustryName, IndustryDescription.
+        """
+        try:
+            results = await sap.get_all(
+                "Industries",
+                filters=f"IndustryCode eq {industry_code}",
+                select=["IndustryCode"],
+            )
+            return len(results) > 0
+        except SAPNotFoundError:
+            return False
