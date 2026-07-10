@@ -211,8 +211,6 @@ Las acciones que modifican una dirección puntual de `BPAddresses` (`cambio_cart
   Layer; propiedades: `IndustryCode` (int), `IndustryName`,
   `IndustryDescription`).
 - Solo asignación: `<VACIO>` se rechaza con mensaje explícito en el schema.
-  El schema exige `Industry > 0`, lo que además excluye el `-1` ("NO
-  DEFINIDO") del catálogo — asignar -1 sería desasignar por la puerta trasera.
 - El pre-validator normaliza celdas numéricas que pandas entrega como `"7.0"`
   (efecto de `dtype=str`).
 - Auditoría: `fetch_before` captura el `Industry` previo; `build_after` el

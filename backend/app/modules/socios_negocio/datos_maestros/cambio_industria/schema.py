@@ -31,7 +31,7 @@ class CambioIndustriaRow(RowBase):
     )
 
     CardCode: str = Field(..., description="CN{RUT} clientes, PN{RUT} proveedores")
-    Industry: int = Field(..., gt=0, description="Código del catálogo de industrias (OIND)")
+    Industry: int = Field(..., description="Código del catálogo de industrias (OIND)")
     CardName: str | None = Field(None, description="Informativa — no se envía a SAP")
 
     @field_validator("Industry", mode="before")
